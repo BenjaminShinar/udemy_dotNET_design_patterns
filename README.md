@@ -7,7 +7,10 @@ this document will be where I write what i learned.
 the code was compiled and tested on [dotnetFiddle](https://dotnetfiddle.net/) rather than messing around with local installation. use DotNet 5.0 to get string interpolation.
 
 ## The SOLID Design Principles
+<details>
+<summary>
 basics of OOP programming.
+</summary>
 
 ### Single Responsibility Principle
 
@@ -35,6 +38,8 @@ A red flag is functions that aren't supported (throw exceptions, do no-ops, alwa
 High level modules should not depend of low level modules. Use abstractions.  
 Consume classes as interfaces, so they are decoupled from other classes which uses them. Don't depend on concrete classes in input / member variables. Prefer using interfaces (for both levels).
 
+</details>
+
 ## The Gamma Classification
 
 Based on gang of four (GOF) classification: Creational, Structural and Behavioral patterns. named after Eric Gamma (one of the authors).
@@ -42,10 +47,17 @@ Based on gang of four (GOF) classification: Creational, Structural and Behaviora
 
 ## Creational Patterns
 
+<details>
+<summary>
 explicit creation with constructor, implicit creation (Dependency injection, reflection,etc). creation with a single statement (common case) or piecewise creation (initialization steps).
+</summary>
+
 
 ### Builder
-
+<details>
+<summary>
+When piecewise object construction is complicated, provide an API for doing it succinctly.
+</summary>
 Some objects are complicated to build. but a constructor with too many arguments isn't a reasonable behavior. A builder class is a separate class that is used to hold all the pieces together until finally calling the real class constructor.
 
 Think about the C# StringBuilder which is used to build a string object. 
@@ -133,23 +145,27 @@ static void Main(string[] args)
 };
 ```
 we can add a method *.build()* that actually constructs the final object in the end.  
+
 #### Functional Builder
+
 An example of using a functional builder: a builder object with a list of functions, extension methods and open/closed principal. then we can make this an abstract builder class that can work for any type of class
 
 #### Faceted Builder
 
 using a *facade* design pattern to hold the reference to class, and then using more than one builder on it. the containing object exposes different builders (with the same object as the reference) and allows the user to switch between different 'builder' mechanisms.
 
+</details>
 
 ### Factories
 
-regular and abstract factory.
-> A component responsible solely for the wholesale (not piecewise) creation of objects.
-
+<details>
+<summary>
+A component responsible solely for the wholesale (not piecewise) creation of objects.
+</summary>
 
 #### Factory Method
 
-normal constrictors must have the same (none descriptive) name, if you want to provide defaults this can turn into a mess ("optional parameters hell"). you can't have the same parameters for different functions because that's not possible in overloading functions (all the ctors have the same name!) and you can't give a derived class without explicitly calling for that derived class ctor.
+Normal constructors must have the same (none descriptive) name, if you want to provide defaults this can turn into a mess ("optional parameters hell"). you can't have the same parameters for different functions because that's not possible in overloading functions (all the ctors have the same name!) and you can't give a derived class without explicitly calling for that derived class ctor.
 
 ##### Point Example 
 
@@ -190,19 +206,135 @@ Give out ~~abstract~~ interface objects (rather than concrete objects). we can a
 the example in the video is a hot drinks machine which uses Activator.CreateInstance() to create classes with reflection.
 
 the example has a bit of violating the OCP (open close principle) by using enums. it can be fixed with reflections again (on with dependency injection, as it should be used in production code), we take all classes that implement the interface from the assembly (avoiding the interface itself) and create them as our factories. to create an actual drink we have a method to expose the available options with a primitive type identifer (index number, string name) that we can accept from the user (don't forget to validate it!) and access the correct factory.
+</details>
 
 ### Prototype
 
-All about object copying. We don't design object from scratch. we make a copy and then change it. sometimes it's called a 'clone' of the object, we need deep copying.
-> A partially or fully initialized object that you copy (clone) and make use of.
+<details>
+<summary>
+A partially or fully initialized object that you copy (clone) and make use of.
+</summary>
+
+All about object copying. We don't design object from scratch. we make a copy and then change it. sometimes it's called a 'clone' of the object, we need deep copying.  
+we can either implement DeepCopy as a method/interface ourselves or use a serializer.
+
+#### ICloneable is bad? what about Copy Constructors?
+
+C# provides an interface ICloneable with the method Clone(), but it doesn't specify if it's a shallow copy or deep copy. and it always returns an object frm type Object (we need to explicitly cast it). Clone() sometimes specifies if it does a shallow copy.  
+Another concept is taken from C++, the copy constructor. a constructor overload that takes an instance of the same class and calls the copy constructor on the members. but it's weird to do something c++ in c#.
+
+#### IPrototype<T> interface
+
+what about an interface that is both generic (DeepClone() returns T, no need to cast it) and explicitly does deep copying? it's possible, but still cumbersome, because it needs to be implemented in each member of the object.  
+This approach doesn't scale well with large inheritance hierarchy. Each derived class must be able to pass parameters to the base class, and there's a lot of repetition going on. we can around it by requiring the class to have a empty default constructor, and implement a method to copy it's own properties into an object of the same class. we also have a default DeepCopy() method. the CopyTo() method copies it's own class properties and calls the base class CopyTo() method. there's an issue of casting to use the default implementation method. there is a problem that deepCopy() can not only copy a derived class, it can also copy a derived class into a base class.
+
+``` csharp
+public interface IDeepCopyable<T> where T: new()
+{
+    void CopyTo(T target);
+    //default implementation?
+    T DeepCopy()
+    {
+        T t = new T();
+        CopyTo(t);
+        return t;
+    }
+}
+```
+
+
+#### Copy Through Serialization
+
+why bother with all the inheritance and interfaces when can simply use  extension methods on any type by serializing and deserializing. if we want to use the binary formatter, then all the classes and members must be using the [\[Serializable\] attribute](https://docs.microsoft.com/en-us/dotnet/api/system.serializableattribute?view=net-5.0). but we can choose other formatters, each serializer has different requirements. the xmlSerializer requires an empty parameterless constructor.
+
+``` csharp
+//extension method, takes this as argument, so can be called on anything?
+public static T DeepCopy<T>(this T self)
+{
+    var stream = new MemoryStream();
+    var formatter = new BinaryFormatter(); //requires the [Serializable] attribute
+    formatter.serialize(stream, self); //write to stream
+    stream.seek(0,SeekOrigin.Begin);  //start of stream;
+    object copy = formatter.Deserialize(stream); //read from stream
+    stream.close(); //maybe we could have used 'using'
+    return (T) copy; //cast to T;
+}
+
+public static T DeepCopyXml<T>(this T self)
+{
+    using (var stream = new MemoryStream()) //will close the stream on it's own.
+    {
+        var serializer = new XmlSerializer(typeof(T));
+        serializer.Serialize(stream,self);
+        stream.Position = 0; //same as Seek, bring the stream back to the start;
+        return (T)serializer.Deserialize(stream);
+    }
+}
+```
+</details>
 
 ### Singleton
 
+<details>
+<summary>
+A component which is instantiated only once.
+</summary>
+
+The very hated pattern, even said that is often a design smell.
+
+for some components, it doesn't makes sense to have more than one object of it's kind. important when construction is expensive, we don't want to allow more creations of it, and we want the entire system to use the same instance.
+ 
+keep the constructor private and have a static instance, all the usual lazy or eager instantiation, we can use the system Lazy<> class if we want.
+
+there is a problem: the singleton is a hard coded reference, so testing any component that uses it means testing on a 'live' component, and we can't write tests because the data might change, and we are using the live component (and one day, we will do something stupid to mess it up and the whole team will have to stop everything and fix it), so things are already in danger. we can mitigate this by using dependency injection. 
+
+instead of implementing a singleton, we create a normal class, and use a dependency injection framework to treat it as such.
+
+``` csharp
+public void DependencyInjection()
+{
+    var cb = new ContainerBuilder(); //dependency 
+    cb.RegisterType<OrdinaryDatabase>() //register the normal class or mock data
+    .As<IDatabase> //the interface it implements
+    .SingleInstance(); // require just one of them.
+    cb.RegisterType<ConfigurableRecordFinder>(); //register a type that uses the interface.
+    using (var c = cb.Build())
+    {
+        var rf = c.Resolve<ConfigurableRecordFinder>();
+    }
+}
+```
+
+why Singleton and not static? because we can't use dependency injection with static class. but there is something called [monostate pattern](https://stackoverflow.com/questions/624653/is-monostate-the-good-cousin-of-the-evil-singleton) which aims to have our cake and eat it. we can use 'new' to instantiate new objects, but all objects are referring to static fields. so maybe this means we can inherit from the class and still keep a single state.
+
+thread safety: we can have a singleton for each thread by using a ThreadLocal<> wrapper and combine it with the other singleton implementations. we can also get the same results by using some container framework like we did with the dependency injection.
+
+#### Ambient context pattern
+
+some data that is changing, but also shared?
+example in video. stack of contexts? scoping, disposing.   
+
+</details>
+
+</details>
+
 ## Structural Patterns
 
+<details>
+<summary>
 The structure of the classes (class members), mimicking class interfaces like wrappers, stressing the importance of good api design.
+</summary>
+
+
 
 ### Adapter
+
+<details>
+<summary>
+TODO: add Summary
+</summary>
+</details>
+
 ### Bridge
 ### Composite
 ### Decorator
@@ -210,9 +342,15 @@ The structure of the classes (class members), mimicking class interfaces like wr
 ### Flyweight
 ### Proxy
 
+</details>
+
 ## Behavioral Patterns
 
+
+<details>
+<summary>
 No central theme, particular ways to solve common problems.
+</summary>
 
 ### Chain Of Responsibility
 ### Command
@@ -224,4 +362,12 @@ No central theme, particular ways to solve common problems.
 ### State
 ### Strategy
 ### Template Method
+
 #### Visitor
+
+<details>
+<summary>
+TODO: add Summary
+</summary>
+</details>
+</details>

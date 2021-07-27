@@ -1,13 +1,20 @@
 {
     "cSpell.ignoreWords": [
+        "cloneable",
+        "combinators",
+        "creational",
         "crtp",
         "design",
         "dot",
+        "i",
         "liskov",
+        "monostate",
         "myclass",
         "net",
-        "patterns",
+        "parameterless",
         "resharper",
+        "serializable",
+        "typeof",
         "udemy",
         "yagni"
     ]

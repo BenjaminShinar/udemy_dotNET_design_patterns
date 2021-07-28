@@ -366,8 +366,15 @@ I think the difference between this a a decorator is that decorator is designed 
 
 <details>
 <summary>
-TODO: add Summary
+A mechanism for treating individual (scalar) object and compositions of objects in a uniform matter.
 </summary>
+
+An example of a drawing application using a Composite to aggregate Graphic Objects together. the base class contains other object of itself. object can contain both it's own data and components, and the API doesn't care about it.  
+An example of a neuron network containing a neuron class, a neuron layer and eventually a neuron rind. instead, we treat a single neuron as a collection of neuron as well. we define the neuron class an IEnumerable\<neuron\>, and **define the api around the collection of elements**, so we can treat a singular element the same as the aggregate.
+
+going back to the open closed principle, where we created an 'AndSpecification' as a combinator of ISpecification, we can replace it with a 'CompositeSpecification' base class that can handle any number of CompositeSpecification (single, two, many) which can be combined in different ways.
+
+based on the exercise, we should look at the IEnumerable interface.
 
 </details>
 

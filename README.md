@@ -325,18 +325,52 @@ example in video. stack of contexts? scoping, disposing.
 The structure of the classes (class members), mimicking class interfaces like wrappers, stressing the importance of good api design.
 </summary>
 
-
-
 ### Adapter
+
+<details>
+<summary>
+A construct which adapts an existing interface X to conform to the required interface Y.
+</summary>
+imagine a electrical adapter for different power outlets.  
+we take one class and force it to conform to some given interface, either by creating a new class or forwarding calls. can be as simple or as complicated as needed.
+
+#### Caching
+
+If our adapter uses a large amount of temporary data (creating objects), it might be more efficient to do some caching and retain the data internally. this of course assumes that we are going to reuse the same objects and that they are constant and not changing.
+
+#### Generic Value Adapter
+
+*not sure what's the point, actually*  
+this would be trivial in c++. but in c# this requires quite a bit of work. there is a big example that. see file. basically, we need to propagate the type information in the entire hierarchy, we simply throw TSelf everywhere.
+
+#### Adapter with dependency injection
+
+an example with the container pattern and the command pattern. we use the *ContainerBuilder.RegisterAdapter()* method and the metadata feature.
+
+</details>
+
+### Bridge
+
+<details>
+<summary>
+A mechanism that decouples an interface (hierarchy) from implementation (hierarchy).
+</summary>
+Avoiding a 'cartesian product complexity explosion' situation, if we have different features in a class hierarchy, each inheritance level can double the amount of classes. we rather use aggregation/composition than inheritance.  
+if an interface has two options, we don't add the interface implementation to the class definition, we keep it as member so it doesn't require us to stack levels of inheritance classes.
+should probably go along with dependency injection.
+
+I think the difference between this a a decorator is that decorator is designed to hold itself in a nested level, while the bridge pattern is about horizontal levels. I think that this can be achieved with templates, but who am i to decide..?
+</details>
+
+### Composite
 
 <details>
 <summary>
 TODO: add Summary
 </summary>
+
 </details>
 
-### Bridge
-### Composite
 ### Decorator
 ### Facade
 ### Flyweight
@@ -345,7 +379,6 @@ TODO: add Summary
 </details>
 
 ## Behavioral Patterns
-
 
 <details>
 <summary>

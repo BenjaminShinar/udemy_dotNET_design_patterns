@@ -490,6 +490,21 @@ we can additionally expose more internal operations for more experienced users t
 
 ### Flyweight
 
+<details>
+<summary>
+A space optimization technique that lets use use less memory by storing externally the data associated with similar objects.
+</summary>
+</details>
+
+the goal is to avoid redundancy when storing data. avoid duplication across objects. [String Interning](https://en.wikipedia.org/wiki/String_interning) is an example of it, string literals (which are immutable) that have the same text are stored just once. we can use references, keys, pointers, indices or some other way to save the precious memory.
+
+example of storing strings in a static array and having each object keep indices of the strings it uses. it's probably a bit longer to construct with all the string actions but we use less memory.  
+another example of using ranges (start end pairs) instead of of keeping a separate flag for each position.
+
+we try to store any data externally and minimize how much of it we store. 
+
+*turns out I've been using this all the time!*
+
 ### Proxy
 
 </details>

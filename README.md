@@ -379,6 +379,104 @@ based on the exercise, we should look at the IEnumerable interface.
 </details>
 
 ### Decorator
+
+<details>
+<summary>
+Facilitates the addition of behaviors to individual object without inheriting from them.
+</summary>
+
+sticking to the open code principle, extend functionality, keep the new changes separate (single responsibility principle), also work with sealed objects that can't be inherited.
+
+it may or may not proxy calls to the decorated objects, it allows us to create runtime different decorators chains. we can use dynamic decorations (by passing around objects as references), or static decorations, which aren't as complex because of how the language treats generics (it's much more impressive in c++).
+
+#### Decorating a Sealed class - CodeBuilder and StringBuilder
+
+example of decorating the StringBuilder class. it's a sealed class (can't inherit from it) so if we need new functionality, we can't simply inherit and override. StringBuilder is actually a fluent class, so even if we delegate everything to the StringBuilder member, we need some manual changes.
+
+#### Adapter - Decorator 
+
+a class that uses both a StringBuilder member and adapts it to conform to regular string operations (constructor from string literal, concatenation with strings with the plus operator). this allows us quickly refactor any inefficient string objects into more efficient code (which is implemented via the StringBuilder) without changing any operations besides the creation of the object.
+
+#### Pseudo Multiple Inheritance
+
+C# and java don't support multiple inheritance. we use interfaces instead. but if we still need more than one base class (for member variables), we can use composition. the 'derived' class implements the interfaces, but delegates them to member variables.  
+this brings back the diamond inheritance problem, if the two members (which are supposed to be base class) have a common property, we need to keep the values in sync. there isn't a 'clean' virtual inheritance like in c++.
+
+#### Multiple Inheritance with Default interface members
+
+modern c# allows us to have default implementations for interface methods;
+``` csharp
+public interface ICreature
+{
+    int Age {get; set;}
+}
+
+public interface IBird:ICreature
+{
+    void Fly()
+    {
+        if (Age >10)
+        {
+            Console.WriteLine("Flying!");
+        }
+    }
+}
+```
+options of adding behaviors
+1. Inheritance
+2. Wrapper class
+3. Extension methods.
+4. C#8 default interface methods.
+
+we can't actually call the default methods from the concrete class (if we the derived class didn't implement it), we must refer to our object as the interface via casting  or by using the "if (o **is** Obj obj)" syntax.
+
+#### Dynamic Decorator Composition
+
+this is probably the classic way to learn decorator design pattern,an object holds a reference to an object of the same interface, and delegates the operations after (or before) adding it's own special behavior.
+
+there is a possible issue with Dynamic Decorator Composition, we can create a cycle that two decorators modify the same 'functionality', what does it mean that a shape has two 'color decorator'?. this can't be statically detected.  
+this can be solved with a CyclePolicy:
+``` csharp
+public abstract class ShapeDecoratorCyclePolicy
+{
+    public abstract bool TypeAdditionAllowed(Type type,IList<Type> allTypes);
+    public abstract bool ApplicationAllowed(Type type,IList<Type> allTypes);
+}
+
+public class ThrowOnCyclePolicy:ShapeDecoratorCyclePolicy
+{
+    private bool handler(Type type,IList<Type> allTypes)
+    {
+        if (allTypes.Contains(type))
+        {
+            throw new InvalidOperationsException($"cycle!");
+        }
+        return true;
+    }
+    public override bool TypeAdditionAllowed(Type type,IList<Type> allTypes)
+    {
+        return handler(type,allTypes);
+    }
+    public override bool ApplicationAllowed(Type type,IList<Type> allTypes)
+    {
+        return handler(type,allTypes);
+    }
+}
+```
+there is an common practice in c# of having both a generic and none generic classes with the same name. it has something to do with the *is* operator. see file. it's another **curious recursive template pattern** thing with inheriting from TSelf; the policy is a **strategy design pattern**.
+
+#### Static Decorator Compositions
+
+this is something that works in languages with compile time templates like c++.  in the example everything requires having a default constructor. we have a problem with the inner constructors. and how to access and expose the properties of the inner decorator. **this isn't a viable solution to C# production code**.
+
+#### Decorator in dependency injection
+
+using ContainerBuilder. we can register it as a named decorator, and supply it with a lambda to resolve the decorator properly.
+
+
+
+</details>
+
 ### Facade
 ### Flyweight
 ### Proxy

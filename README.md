@@ -472,13 +472,24 @@ this is something that works in languages with compile time templates like c++. 
 #### Decorator in dependency injection
 
 using ContainerBuilder. we can register it as a named decorator, and supply it with a lambda to resolve the decorator properly.
-
-
-
 </details>
 
 ### Facade
+
+<details>
+<summary>
+Provides a simple, easy to understand user interface over a large and sophisticated body of code.
+</summary>
+
+exposing several components through a single interface.
+DirectX and OpenGL are rendering images techniques that go faster than the regular console.
+an example of pre-rendered console app, the custom console class is facade over a much more complicated code that is hidden from the user. the implementation itself depends on how simple/complicated we want to expose.  
+we can additionally expose more internal operations for more experienced users to use.
+
+</details>
+
 ### Flyweight
+
 ### Proxy
 
 </details>

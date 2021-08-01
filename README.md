@@ -639,7 +639,7 @@ which set of 4 operators allows us to reach zero?
 1 - 3 - 5 - 7 =0.
 can we find for each number if there is an operator set that reaches this value?
 
-an example of using an index property and enums.
+an example of using an index property and enums to do a formula evaluation.
 
 </details>
 
@@ -653,7 +653,40 @@ No central theme, particular ways to solve common problems.
 </summary>
 
 ### Chain Of Responsibility
+
+<details>
+<summary>
+A chain of components who all get a chance to process a command or a query, optionally having default processing implementation and an ability to terminate the processing chain.
+</summary>
+
+which component handles events? where does the handling stop? in which order does this happen? how are effects compounded across elements.
+
+**CQS** Command Query Separation :  
+Query: get information  
+Command: ask for action or change  
+therefore, QCS means having different means of sending commands and queries.
+in the chain of command pattern we can have listeners that listen on the commands and modify them.
+
+something like a linked list of Modifying elements (is this not the decorator pattern?) that request handling from one another.
+
+an example using a cardGame with modifiers on the creature with method Chain. including the interception of calls in a modifier class.
+
+the problem in that example is that the inner object is mutated, and also exposed outside, so we can't easily remove a layer from it. the better implementation uses a Mediator pattern and events. this called a *Broker Chain*.  we have a query object that acts as the 'getter' method. we use an abstract base class. the modifier class listens to events and if it's relevant right now than we modify the result of the query. we can also make them *IDisposable* so that they remove themselves from the chain when they're done.
+
+
+note: I did the exercise and I thought it was a mess, my code wasn't accepted at all, so i included the solution code instead with my comments. I think it's a stupid implementation. 
+
+</details>
+
 ### Command
+
+<details>
+<summary>
+TODO: add Summary
+</summary>
+</details>
+
+
 ### Interpreter
 ### Mediator
 ### Memento

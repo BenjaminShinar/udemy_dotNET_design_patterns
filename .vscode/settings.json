@@ -9,6 +9,7 @@
         "i",
         "liskov",
         "monostate",
+        "mvvm",
         "myclass",
         "net",
         "parameterless",
@@ -19,6 +20,7 @@
         "yagni"
     ],
     "cSpell.words": [
-        "combinator"
+        "combinator",
+        "struct"
     ]
 }

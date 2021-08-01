@@ -494,7 +494,6 @@ we can additionally expose more internal operations for more experienced users t
 <summary>
 A space optimization technique that lets use use less memory by storing externally the data associated with similar objects.
 </summary>
-</details>
 
 the goal is to avoid redundancy when storing data. avoid duplication across objects. [String Interning](https://en.wikipedia.org/wiki/String_interning) is an example of it, string literals (which are immutable) that have the same text are stored just once. we can use references, keys, pointers, indices or some other way to save the precious memory.
 
@@ -504,8 +503,145 @@ another example of using ranges (start end pairs) instead of of keeping a separa
 we try to store any data externally and minimize how much of it we store. 
 
 *turns out I've been using this all the time!*
+</details>
 
 ### Proxy
+
+<details>
+<summary>
+A class that functions as an interface to a particular resource. the resource may be remote, expensive to construct, or may require logging or some some other added functionality.
+</summary>
+
+avoid changing code by using the same interface with different behavior, allow for remote calls (calls to a different process),logged calls (write to log) or guarded calls (check for validity of arguments) without changing the interface.
+
+#### Protection Proxy
+
+a class that controls access to a different class and performs additional checks on it. can be used to authentication resources. we keep the same core functionality the same, but we control if it's possible to call on it or not.
+
+#### Property Proxy
+
+rather than use a value as property, we can use a class as that property, and this class controls the value. we can avoid setting the value if the existing value is the same.
+
+``` csharp
+public class Property<T>
+{
+    private T value;
+    public T Value
+    {
+        get=> value;
+        set {
+            if (Equals(this.value, value))
+            {
+                //do nothing
+            }
+            else
+            {
+                this.value = value;
+            }
+        }
+    }
+
+    public static implicit operator T(Property<T> property)
+    {
+        return property.value;
+    }
+    public static implicit operator Property<t>(T value)
+    {
+        return new Property<T>(value);
+    }
+    //equality operators... 
+}
+```
+there is an issue with the = operator. C# doesn't allow us to overload the assignment operator (unlike C++), so it would create a new property rather than mutate the value. so we actually keep the property<T> class private and provide property T that has a custom setter to change the private property.
+
+``` csharp
+public class Creature{
+    private Property<int> agility= new Property<int>();
+    public int Agility {
+    get{return agility.Value;}
+    set{agility.Value= value;}
+    }
+}
+```
+
+*in Landa we had ParameterValue\<T\> and ParameterConstraint\<T\> classes*
+
+#### Value Proxy
+
+a wrapper on a primitive type that provides some extra juice and consolidates synthetic sugar into the class.
+example for creating a 'Percentage' class.
+use extension method to allow construction of class from value
+
+``` csharp
+    public struct Percentage
+    {
+        private readonly float value;
+        internal Percentage(float value)
+        {
+            this.value=value;
+        }
+        public static float operator *(float f, Percentage p)
+        {
+            return f*p.value;
+        }
+        public static Percentage operator +(Percentage p1, Percentage p2)
+        {
+            return new Percentage(p1.value+ p2.value);
+        }
+    }
+    
+    public static Percentage Percent(this int value)
+    {
+        return new Percentage (value/100.f);
+    }
+    
+```
+
+#### Composite Proxy: SoA/AoS
+
+*structure of arrays* or *array of structures*?
+
+different storage for a class that behave the same. instead of having an array of N objects with 3 properties, we can have 3 N sized Arrays. the external object simply stores the reference and all it's actions are performed with the index on the arrays. this way we can perform actions on a single proxy element and all the similar data is located near each other.
+
+#### Composite Proxy with Array backed Properties
+
+grouping properties together with a composite proxy.
+we can have a property All that does all the 'set' commands together. the get command should return a nullable object (bool?), if they are all the same, we return the value, otherwise, we return a null.
+
+but rather than use names properties, we can use array backed properties, and now we can use array methods, so it's easier to extend this.
+
+#### Dynamic Proxy for logging
+
+we can have a dynamic proxy, example with using dynamicObject and reflection. we override the 'TryInvokeMember' method. we use a generic factory method and the .ActLike() method from some *ImpromptuInterface* library and .As\<Interface\> (we need to override somethings)
+
+#### Proxy vs Decorator
+
+* Proxy provides an identical interface, Decorator provides an enchanted interface,
+* Decorator typically aggregates (or has reference to) what it's decorating, a proxy doesn't necessarily.
+* a proxy might not even be working with a real materialized object. like Lazy object.
+
+#### View Model
+
+we can use a proxy to add validation to a class and keep the UI concerns separate from the class itself. 
+MVVM (model, view, view model)
+Model - the data itself
+View - the UI stuff
+View Model - usually a proxy over the Model, provides the 'onPropertyChanged' stuff.
+we can use this together with a decorator to get some additional functionality.
+
+#### Bit Fragging
+
+Boolean isn't a really stored as a bit. that's a problem if you have too many bool properties it might be a memory issue. we have BitArray ov VectorBit\<32\> in the standard library. but if we want a different fragmentation (like, 0,1,2,3) we can store them in bits and use a proxy over them. this is similar to the bit fields in classic C.
+
+example of using a set of operators to find if an array of numbers and can reach an value.
+> 1,3,5,7 -> 0.  
+which set of 4 operators allows us to reach zero?
+1 - 3 - 5 - 7 =0.
+can we find for each number if there is an operator set that reaches this value?
+
+an example of using an index property and enums.
+
+</details>
 
 </details>
 
@@ -534,4 +670,13 @@ No central theme, particular ways to solve common problems.
 TODO: add Summary
 </summary>
 </details>
+</details>
+
+## extra stuff
+<details>
+<summary>
+Stuff that i didn't know about until now.
+</summary>
+
+the [\[DebuggerDisplay\] attribute](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.debuggerdisplayattribute?view=net-5.0) that controls how class appears during debug sessions. if we want something other than the 'toString()' override.
 </details>

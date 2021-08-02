@@ -702,6 +702,84 @@ An example of commands in a bank account program. need to handle a situation whe
 
 ### Interpreter
 
+<details>
+<summary>
+A Component that process **structured** text data. Does so by turning it into separate lexical tokens (*lexing*) and then interpreting sequences of said tokens (*parsing*).
+</summary>
+
+processing textual input into executables actions. parsing text into something structured. this is what fuels regex, IDEs, python code, HTML, XML, code suggestions and suggestions, and of course: Compilers from source code to Binary code.
+
+an example of parsing a text string containing simple mathematical expressions, numbers, parentheses, plus and minus operators.  
+a token is any single element, in our case: numbers, operations, brackets.
+
+first stage it to lex - takes an string input and turns it into a collection of tokens.
+the next stage is parsing. how are do the tokens interact with one another? how do they relate to each other, and which order?
+
+``` csharp
+// warning! don't rely on this code! it didn't work well for me in the exercise!
+public class Token
+{
+    public Enum Type
+    {
+        Integer, Plus, Minus, LeftParentheses, RightParentheses;
+    }
+
+    public Type tokenType;
+    public string Text;
+
+    public override string ToString()
+    {
+        return $"`{Text}`";
+    }
+    public static List<Token> Lex(string input)
+    {
+        var results = new List<Token>();
+        for (int i =0; i < input.Length ;++i)
+        {
+            switch(input[i])
+            {
+                case '+':
+                results.Add(new Token(Token.Type.Plus),"+"));
+                break;
+                case '-':
+                results.Add(new Token(Token.Type.Minus,"-"));
+                break;
+                case '(':
+                results.Add(new Token(Token.Type.LeftParentheses,"("));
+                break;
+                case ')':
+                results.Add(new Token(Token.Type.RightParentheses,")"));
+                break;
+                default:
+                var sb = new StringBuilder(input[i].ToString())
+                {
+                    for (int j=i+1; j <input.Length;++j)
+                    {
+                        if (char.IsDigit(input[j]))
+                        {
+                            sb.Append(input[j]);
+                            ++i; //this is for the next big loop!
+                        }
+                        else
+                        {
+                            results.Add(new Token(Token.Type.Integer,sb.ToString()));
+                            break; //break the char processing loop!
+                        }
+                    }
+                }
+                break; //break the switch statement.
+            }
+        }
+        return results;
+    }
+}
+
+```
+
+ANTLR - Another Tool For Language Recognition. a parser to generate structured data from input,
+</details>
+
+
 ### Mediator
 ### Memento
 ### Null Object

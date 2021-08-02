@@ -682,12 +682,26 @@ note: I did the exercise and I thought it was a mess, my code wasn't accepted at
 
 <details>
 <summary>
-TODO: add Summary
+An object which represents an instruction to perform a particular action. contains all the information necessary for the action to be taken.
 </summary>
+
+There is no built-in 'undo' action in C#, there is no easy way to serialize a sequence of actions. are 'queries' commands? that depends. they are an object that performs a thing, but we still have the Query-Command Separation concept.
+
+we can string several commands together to perform complex actions, or write a single command that contains the whole logic of an operation. the commands encapsulate the 'main' of the program, and can be used from a UI, stored in a database, and even have an 'undo' operation (be sure to only allow rollbacks if operation was successful, and only do this once!). commands can also hold state. this allows us to create a transactional model.
+
+we need a command, a command processor, and then we can add an undo action or composite commands (called macros).
+
+#### Composite Commands
+
+a combination of the composite pattern and the command pattern. a single command that is a composite of several commands together.
+
+An example of commands in a bank account program. need to handle a situation where some commands were successful and some were not.
+
+
 </details>
 
-
 ### Interpreter
+
 ### Mediator
 ### Memento
 ### Null Object
@@ -712,4 +726,12 @@ Stuff that i didn't know about until now.
 </summary>
 
 the [\[DebuggerDisplay\] attribute](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.debuggerdisplayattribute?view=net-5.0) that controls how class appears during debug sessions. if we want something other than the 'toString()' override.
+
+
+ACID in databases - requirements for transactional operations:
+* Atomicity
+* Consistency
+* Isolation
+* Durability
+
 </details>

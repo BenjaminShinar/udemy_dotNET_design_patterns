@@ -779,6 +779,156 @@ public class Token
 ANTLR - Another Tool For Language Recognition. a parser to generate structured data from input,
 </details>
 
+### Iterator
+
+<details>
+<summary>
+An object (or, in .NET, a method), that facilitates the traversal of a data structure.
+</summary>
+
+Traversal of data functions. Iterator is the class that facilitates the traversal by keeping a reference to the current element and knows how to move to the next element. C# has the implicit iterator construct with the IEnumerable interfaces and the *yield return* statements.
+
+An example of binary tree, doing in-order-traversal
+
+Traversals of tree 
+``` json
+{
+"root":{
+    "value":1,
+    "left": {"value":2},
+    "right": {"value":3}
+    }
+};
+```
+>   
+      1  
+     / \ 
+    2   3
+
+* In-Order: left, this, right: 2,1,3
+* Pre-Order: this, left, right: 1,2,3
+* Post-Order: right,this,left: 3,2,1
+
+
+the basic form of an iterator has the current Data Node, a moveNext method that returns true and moves the iterator forward. this is the tr
+traditional form, like how it's implemented in c or c++.
+
+``` csharp
+public class Node<T>
+{
+    T data;
+    Node<T> Parent,Left,Right; //bi directional Node
+}
+public class InOrderIterator<T>
+{
+    private readonly Node<T> root;
+    public Node<T> Current;
+    private bool yieldedStart = false; //used just once;
+    public InOrderIterator<T>(Node<T> root)
+    {
+        this.root = root;
+        Current = root;
+        while (Current.left != null)
+        {
+            Current=Current.Left; //go all the way left!
+        }
+    }
+    public bool MoveNext()
+    {
+        if (!yieldedStart)
+        {
+            yieldedStart= true; //happens once!
+            return true;
+        }
+
+        if (Current.Right != null)
+        {
+            Current = Current.Right; // one to the right
+            while (Current.left != null)
+            {
+                Current=Current.Left; //go all the way left!
+            }
+            return true;
+        }
+        else
+        {
+            var p = Current.Parent;
+            while (p!= null && Current == p.Right) // we have a parent, and we are coming from the right side of it.
+            {
+                Current =p;
+                p = p.parent;
+            }
+            Current = p;
+            return Current != null;
+
+        }
+    }
+
+    public void Reset(){
+        //additional operations
+        //Current = root;
+        //yieldedStart= false;
+    }
+}
+
+```
+
+but we can do better in C#, we have the yield return keyword for this. this creates a state machine for us. this is recursive, readable and simple
+
+``` csharp
+public class BinaryTree<T>
+{
+    private Node<T> root;
+
+    public IEnumerable<Node<T>> InOrder
+    {
+        get
+        {
+            //local method?
+            IEnumerable<Node<T>> TraverseInOrder(Node<T> current)
+            {
+                // left elements
+                if (current.Left != null)
+                {
+                    foreach (var left in TraverseInOrder(current.Left))
+                    {
+                        yield return left;
+                    }
+                }
+                // this element
+                yield return current;
+                // right elements
+                if (current.Right != null)
+                {
+                    foreach (var right in TraverseInOrder(current.Right))
+                    {
+                        yield return right;
+                    }
+                }
+            }
+
+            foreach (var node in TraverseInOrder(root))
+            {
+                yield return node;
+            }
+        }
+    }
+}
+```
+
+
+#### Duck Typing
+
+an IEnumerable type is a class that has a *GetEnumerator* method which returns an *Iterator* with *MoveNext* method that returns a bool and a *Current* property. we don't need to declare the class as IEnumerable. as long as we have GetEnumerator method, we can do a *foreach* loop.  
+most of the actions in c# require a formal Interface, but duck typing doesnt.
+
+
+#### Array-backed Properties (revisited)
+
+if we stick our elements in an array, we can use linq to take advantage of the array methods rather than access them directly.  
+*not sure about this*
+
+</details>
 
 ### Mediator
 ### Memento

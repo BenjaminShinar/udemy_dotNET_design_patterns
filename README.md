@@ -788,7 +788,7 @@ An object (or, in .NET, a method), that facilitates the traversal of a data stru
 
 Traversal of data functions. Iterator is the class that facilitates the traversal by keeping a reference to the current element and knows how to move to the next element. C# has the implicit iterator construct with the IEnumerable interfaces and the *yield return* statements.
 
-An example of binary tree, doing in-order-traversal
+An example of binary tree, doing in-order-traversal:
 
 Traversals of tree 
 ``` json
@@ -920,7 +920,7 @@ public class BinaryTree<T>
 #### Duck Typing
 
 an IEnumerable type is a class that has a *GetEnumerator* method which returns an *Iterator* with *MoveNext* method that returns a bool and a *Current* property. we don't need to declare the class as IEnumerable. as long as we have GetEnumerator method, we can do a *foreach* loop.  
-most of the actions in c# require a formal Interface, but duck typing doesnt.
+most of the actions in c# require a formal Interface, but duck typing doesn't.
 
 
 #### Array-backed Properties (revisited)
@@ -931,7 +931,28 @@ if we stick our elements in an array, we can use linq to take advantage of the a
 </details>
 
 ### Mediator
+
+<details>
+<summary>
+A component that facilitates communication between components without them necessarily being aware of each other or having direct (reference) access to each other.
+</summary>
+
+allowing components to be unaware of one another. we don't want direct reference to one another, but rather a single component that controls the flows.
+
+example of a chatroom, or any service with multiple clients (online games). we use something called *event broker* (or *event bus*). the event broker is an *IObservable* object with publisher/subscriber with the *.OfType\<EventType\>().Subscribe(()=>{});* syntax. also uses dependency injection.  
+we have base actor class, base event class and a broker class. the actors publish an event to the broker, and are subscribed to events on it. no actor is directly aware of the other actors. they only operate through the events.
+
+library [MediatR](https://github.com/jbogard/MediatR) example demo. uses interfaces *Command:IRequest\<Response\>, IRequestHandler\<Command,Response\>* that uses async await syntax. using dependency injection again with \<ServiceFactory\> to register the command handler. there are some requirement to use async, so this needs to handled.
+</details>
+
 ### Memento
+
+<details>
+<summary>
+TODO: add Summary
+</summary>
+</details>
+
 ### Null Object
 ### Observer
 ### State
@@ -947,13 +968,15 @@ TODO: add Summary
 </details>
 </details>
 
-## extra stuff
+## Extra Stuff
 <details>
 <summary>
 Stuff that i didn't know about until now.
 </summary>
 
 the [\[DebuggerDisplay\] attribute](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.debuggerdisplayattribute?view=net-5.0) that controls how class appears during debug sessions. if we want something other than the 'toString()' override.
+
+the [\[UsedImplicitly\] attribute](https://www.jetbrains.com/help/resharper/Reference__Code_Annotation_Attributes.html#UsedImplicitlyAttribute) from resharper is a way to exclude some classes that are used internally (via reflection or something like that) from static analysis usage checks.
 
 
 ACID in databases - requirements for transactional operations:
@@ -962,4 +985,39 @@ ACID in databases - requirements for transactional operations:
 * Isolation
 * Durability
 
+Dependency injection framework [Autofac](https://autofac.org/) is used throughout the code (inversion of control container, dependency inversion?). the container has a builder class *ContainerBuilder* with the *Build()* method. 
+* we can register concrete classes.
+* classes that implement an interface.
+* register all class from the assembly.
+* control lifetime and have a singleton object.
+* the container implements *IDisposable*, so it can be used inside a using block.
+
+``` csharp
+using Autofac;
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = new ContainerBuilder();
+        builder.RegisterType<Mediator>()
+            .As<IMediator>() // 
+            .InstancePerLifetimeScope(); //singleton
+
+        builder.Register<ServiceFactory>( ctx =>
+        {
+            var c = ctx.Resolve<IComponentContext>();
+            return t=> c.Resolve(t);
+        });
+
+        builder.RegisterAssemblyTypes(typeof(Program).Assembly)
+            .AsImplementedInterfaces(); //all classes from assembly
+        
+        using (var container = builder.Build())
+        {
+
+        }
+    }
+}
+
+```
 </details>

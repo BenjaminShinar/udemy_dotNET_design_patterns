@@ -1,6 +1,7 @@
 {
     "cSpell.ignoreWords": [
         "antlr",
+        "autofac",
         "cloneable",
         "combinators",
         "creational",
@@ -9,11 +10,13 @@
         "dot",
         "i",
         "liskov",
+        "mediat",
         "monostate",
         "mvvm",
         "myclass",
         "net",
         "parameterless",
+        "r",
         "resharper",
         "serializable",
         "typeof",

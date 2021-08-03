@@ -956,23 +956,66 @@ the goal is to allow an object to return to a previous state with a token. save 
 our object is separated from it's state, and can restore the state from a token at anytime.
 Undo and Redo: keep all the tokens in the class, including the initial state.
 
-Memento for [interop](https://en.wikipedia.org/wiki/COM_Interop),[Interoperability](https://en.wikipedia.org/wiki/Interoperability):
-
+Memento for [interop](https://en.wikipedia.org/wiki/COM_Interop),[Interoperability](https://en.wikipedia.org/wiki/Interoperability): P/Invoke (parallel invocation). *this feels more like the flyweight pattern*.
 </details>
 
 ### Null Object
-### Observer
-### State
-### Strategy
-### Template Method
 
-#### Visitor
+<details>
+<summary>
+A no-op object that conforms to the required interface, satisfying a dependency requirement of some other object.
+</summary>
+*not part of the gang of 4 pattern. sometimes classified as a structural pattern.*
+we assume the objects are generally not null. but what happens if we don't have the object and someone depends on it? we need something to call on at all cases.
+
+this feels like a mock object that simply does nothing. works well with open closed principle. if the object has a dependency on an interface, we have to give it something, and passing a null value is dangerous (unless we were explicitly told it's safe). passing null might cause problems in dependency injection.  
+in this pattern, we implement a class that follows all the requirement of the interface but does nothing. if we have properties it's a bit more complicated. null objects aren't always the right solution, sometimes the object should return a result and we simply can't rely on a defaulted result, but that depends on the software requirements.  
+we can make this null object a sealed class (to avoid having it inherited) or a singleton (there's no point to have more than one). in modern C# we can have a private sealed class inside the interface and static properties. this way we can implement the default class inside the interface, and expose it solely through the interface. however, this is weird because developers don't expect interfaces to have properties, which makes the code unnatural.
+
+dynamic null object - using DLR (dynamic language runtime). of course, this has worse performance than static classes. example using the ImpromptuInterface library and the INull class (see [ImpromptuInterface] below(#Dynamic-Run-Time-ImpromptuInterface)).
+
+</details>
+
+### Observer
 
 <details>
 <summary>
 TODO: add Summary
 </summary>
 </details>
+
+### State
+
+<details>
+<summary>
+TODO: add Summary
+</summary>
+</details>
+
+### Strategy
+
+<details>
+<summary>
+TODO: add Summary
+</summary>
+</details>
+
+### Template Method
+
+<details>
+<summary>
+TODO: add Summary
+</summary>
+</details>
+
+### Visitor
+
+<details>
+<summary>
+TODO: add Summary
+</summary>
+</details>
+
 </details>
 
 ## Extra Stuff
@@ -981,16 +1024,29 @@ TODO: add Summary
 Stuff that i didn't know about until now.
 </summary>
 
+### Attributes
+<details>
+<summary>
+Attributes to consider using
+</summary>
+
 the [\[DebuggerDisplay\] attribute](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.debuggerdisplayattribute?view=net-5.0) that controls how class appears during debug sessions. if we want something other than the 'toString()' override.
 
 the [\[UsedImplicitly\] attribute](https://www.jetbrains.com/help/resharper/Reference__Code_Annotation_Attributes.html#UsedImplicitlyAttribute) from resharper is a way to exclude some classes that are used internally (via reflection or something like that) from static analysis usage checks.
 
 
-ACID in databases - requirements for transactional operations:
-* Atomicity
-* Consistency
-* Isolation
-* Durability
+the [\[CanBeNull\] attribute](https://www.jetbrains.com/help/resharper/Reference__Code_Annotation_Attributes.html#CanBeNullAttribute) from resharper creates warnings when using an object which we annotated as 'CanBeNull' so it forces us to use the  *foo?.bar()* syntax.
+
+</details>
+
+### Libraries 
+
+<details>
+<summary>
+Libraries to consider using
+</summary>
+
+#### Dependency Injection Framework Autofac
 
 Dependency injection framework [Autofac](https://autofac.org/) is used throughout the code (inversion of control container, dependency inversion?). the container has a builder class *ContainerBuilder* with the *Build()* method. 
 * we can register concrete classes.
@@ -1006,8 +1062,14 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = new ContainerBuilder();
+        builder.RegisterType<BankAccount>(); // concrete registration of a class.
+        builder.RegisterType<NullLog>
+            .As<ILog>(); // register concrete class for instance
+
+        builder.Register(ctx=> new BankAccount(null)); //register with lambda.
+        
         builder.RegisterType<Mediator>()
-            .As<IMediator>() // 
+            .As<IMediator>() // as interface
             .InstancePerLifetimeScope(); //singleton
 
         builder.Register<ServiceFactory>( ctx =>
@@ -1021,10 +1083,55 @@ public class Program
         
         using (var container = builder.Build())
         {
-
+            var ba = container.Resolve<BankAccount>(); // get the class from the container.
         }
     }
 }
 
 ```
+
+
+#### Dynamic Run Time ImpromptuInterface
+
+[ImpromptuInterface](https://github.com/ekonbenefits/impromptu-interface).
+a library that does dynamic runtime stuff, like duck typing, constructing interfaces or force objects to behave as if they were of some interface.
+
+``` csharp
+using ImpromptuInterface;
+using Dynamitey;
+
+public class Null<TInterface>: DynamicObject where TInterface: class
+{
+    public static TInterface Instance
+    {
+        get 
+        {
+            return new Null<TInterface>().ActLike<TInterface>();// this is now recognized as TInterface object.
+        }
+    }
+    //override all methods.;
+    public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args,out object result)
+    {
+        result = Activator.CreateInstance(binder.ReturnType); //assuming the return type is default constructable.
+        return true;
+    }
+}
+```
+
+</details>
+
+### Misc
+<details>
+<summary>
+Even more extra than the extra!
+</summary>
+
+ACID in databases - requirements for transactional operations:
+* Atomicity
+* Consistency
+* Isolation
+* Durability
+
+</details>
+
 </details>

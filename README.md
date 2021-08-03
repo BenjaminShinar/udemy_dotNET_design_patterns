@@ -949,8 +949,15 @@ library [MediatR](https://github.com/jbogard/MediatR) example demo. uses interfa
 
 <details>
 <summary>
-TODO: add Summary
+A token/handle representing the system state. Lets us roll back to the state when the token was generated. May or may not directly expose state information.
 </summary>
+the goal is to allow an object to return to a previous state with a token. save a snapshot of the objects and allow the system to restore the object to that state. typically an immutable object so it can't be changed from outside.
+
+our object is separated from it's state, and can restore the state from a token at anytime.
+Undo and Redo: keep all the tokens in the class, including the initial state.
+
+Memento for [interop](https://en.wikipedia.org/wiki/COM_Interop),[Interoperability](https://en.wikipedia.org/wiki/Interoperability):
+
 </details>
 
 ### Null Object

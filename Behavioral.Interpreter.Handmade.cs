@@ -4,6 +4,12 @@ using System.Linq;
 using System.Text;
 using static System.Console;
 
+/*
+this is from the lecture.
+not something that i wrote.
+Only used to comment and better understand the pattern.
+*/
+
 namespace DotNetDesignPatternDemos.Behavioral.Interpreter.Handmade
 {
   public interface IElement

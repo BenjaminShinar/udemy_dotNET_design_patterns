@@ -973,7 +973,6 @@ in this pattern, we implement a class that follows all the requirement of the in
 we can make this null object a sealed class (to avoid having it inherited) or a singleton (there's no point to have more than one). in modern C# we can have a private sealed class inside the interface and static properties. this way we can implement the default class inside the interface, and expose it solely through the interface. however, this is weird because developers don't expect interfaces to have properties, which makes the code unnatural.
 
 dynamic null object - using DLR (dynamic language runtime). of course, this has worse performance than static classes. example using the ImpromptuInterface library and the INull class (see [ImpromptuInterface] below(#Dynamic-Run-Time-ImpromptuInterface)).
-
 </details>
 
 ### Observer
@@ -1004,8 +1003,14 @@ TODO: add Summary
 
 <details>
 <summary>
-TODO: add Summary
+Allows us to define the 'skelton' of the algorithm, with concrete implementations defined in subclasses
 </summary>
+
+similar to the strategy, but using inheritance rather than composition.
+
+Template method: a high level description of the algorithm in the abstract class. combining base class methods with abstract methods in the derived classes. not exactly PIMPL idiom, but using virtual (abstract) methods for implementations from the derived classes.
+
+in the functional programming paradigm, we would used functions as parameters with closure types and lambdas (or nested/local functions).
 </details>
 
 ### Visitor
@@ -1017,6 +1022,27 @@ TODO: add Summary
 </details>
 
 </details>
+
+## Related Concepts
+<details>
+<summary>
+TODO: add Summary
+</summary>
+
+### ASCII C# String
+
+### Continuation Passing Style
+
+### Local Inversion of Control
+
+### DI Container and Event Broker Integration
+
+### Beyond the Elvis Operator
+### CQRS and event Sourcing
+
+### Functional Patterns in F#
+</details>
+
 
 ## Extra Stuff
 <details>

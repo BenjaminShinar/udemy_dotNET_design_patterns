@@ -17,6 +17,7 @@
         "myclass",
         "net",
         "parameterless",
+        "pimpl",
         "r",
         "resharper",
         "serializable",

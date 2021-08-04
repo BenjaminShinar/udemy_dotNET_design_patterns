@@ -1221,8 +1221,90 @@ see [bellow](#Stateless-Library). Microsoft also has library for this.
 
 <details>
 <summary>
-TODO: add Summary
+Enables the exact behavior of a system to be selected either at run-time (dynamic) or at compile-time(static). Also known as a policy (esp. in the C++ World).
 </summary>
+Partially specify behavior, decompose algorithms into higher and level parts. reuse parts of algorithms and specialize other parts.
+This is what we do with sorting algorithms,
+
+example of creating a string from a list for html or markdown syntax with one interface.
+
+``` csharp
+public enum OutputFormat
+{
+    Markdown,
+    Html
+}
+public interface IListStrategy
+{
+    void Start(StringBuilder sb);
+    void End(StringBuilder sb);
+    void AddListItem(StringBuilder sb,string item);
+}
+public class HtmlListStrategy: IListStrategy
+{
+    public void Start(StringBuilder sb)
+    {
+        sb.AppendLine("<ul>");
+    }
+    public void End(StringBuilder sb)
+    {
+        sb.AppendLine("</ul>");
+    }
+    public void AddListItem(StringBuilder sb,string item)
+    {
+        sb.AppendLine($"\t<li>{item}</li>");
+    }
+}
+public class MarkDownListStrategy: IListStrategy
+{
+    public void Start(StringBuilder sb)
+    {
+
+    }
+    public void End(StringBuilder sb)
+    {
+
+    }
+    public void AddListItem(StringBuilder sb,string item)
+    {
+        sb.AppendLine($" * {item}");
+    }
+}
+
+public class TextProcessor
+{
+    private StringBuilder sb = new StringBuilder();
+    private IListStrategy listStrategy;
+
+    public TextProcessor (OutputFormat format)
+    {
+        switch (format)
+        {
+            case OutputFormat.Markdown:
+            listStrategy= new MarkDownListStrategy();
+            break;
+            case OutputFormat.Html:
+            listStrategy= new HtmlListStrategy();
+            break;
+        }
+    }
+    public void AppendList(IEnumerable<string> items)
+    {
+        listStrategy.Start(sb);
+        items.ForEach(item => listStrategy.Append(sb,item));
+        listStrategy.End(sb);
+    }
+    public override string ToString()
+    {
+        return sb.ToString();
+    }
+}
+```
+
+we change the performance by substituting a single component. we can use dependency injection, use generic arguments and template, or simple pass the object in the constructor.
+
+we see the strategy pattern a lot in equality and comparisons algorithms. a class can have default comparison policy (*IComparable/<T/>,IComparable*) or provide a custom policy for the 
+
 </details>
 
 ### Template Method

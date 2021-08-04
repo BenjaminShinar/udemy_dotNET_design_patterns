@@ -987,8 +987,234 @@ TODO: add Summary
 
 <details>
 <summary>
-TODO: add Summary
+A pattern in which the object's behavior is determined by its state. An object transitions from one state to another (something needs to  trigger a transition).
+A formalized construct which manages states and transitions is calls a state machine.
 </summary>
+
+software as a state machine. transitions can be explicit (from inside the object) or in response to events.
+
+if the machine is complex enough, it's probably worth to define all the transitions in a clear and concise way: state entry and exit behavior. actions on event transitions, guard conditions on external factors, default actions when no transition.
+
+#### Classic GOF
+
+the classic example in the GOF is different than what we would do to today. the light switch example. they used classes to represent the state.this might be heavy because each switch required building a new object? also uses bidirectional control flow.
+
+``` csharp
+public abstract class State
+{
+    public virtual void On (Switch switch)
+    {
+        //do nothing
+    }
+
+    public virtual void Off (Switch switch)
+    {
+        //do nothing
+    }
+}
+
+public class OnState : State
+{
+    public override void Off(Switch switch)
+    {
+        //transition
+        switch.state= new OffState();
+    }
+}
+
+public class OffState : State
+{
+    public override void On(Switch switch)
+    {
+        //transition
+        switch.state= new OnState();
+    }
+}
+public class Switch
+{
+    public State state = new OffState();
+    public void On()
+    {
+        //bi-directional control
+        state.On(this);
+    }
+    public void Off()
+    {
+        //bi-directional control
+        state.Off(this);
+    }
+}
+```
+
+#### More Modern Example
+
+if we didn't have any libraries, today we would do something like this:  
+example for a phone state machine. we keep our state as an enum and we have different actions (triggers) to switch between them. there is less overhead of build objects at each transition.
+
+``` csharp
+public class PhoneStateMachine
+{
+    public enum State
+    {
+        OffHook,
+        Connecting,
+        Connected,
+        OnHold
+    }
+
+    public enum Triggers
+    {
+        CallDialed,
+        HungUp,
+        CallConnected,
+        PlaceOnHold,
+        TakenOffHold,
+        LeftMessage
+    }
+    //using (a,b) syntax for pairs. we can also use dictionary<state, dictionary<trigger,state>>
+    // which triggers moves us to which state.
+    private static Dictionary<State,List<(Trigger,State)>> Transitions = new Dictionary<State,List<(Trigger,State)>>
+    {
+        [State.OffHook] = new List<(Trigger,State)> {
+            (Trigger.CallDialed,State.Connecting)
+        },
+        [State.Connecting] = new List<(Trigger,State)> {
+            (Trigger.CallConnected,State.Connected)
+            (Trigger.HungUp,State.OffHook),
+        },
+        [State.Connected] = new List<(Trigger,State)> {
+            (Trigger.LeftMessage,State.OffHook),
+            (Trigger.PlaceOnHold,State.OnHold),
+            (Trigger.HungUp,State.OffHook)
+        },
+        [State.OnHold] = new List<(Trigger,State)> {
+            (Trigger.TakenOffHold,State.Connected),
+            (Trigger.HungUp,State.OffHook)
+        }
+    };
+    public static void Main(string[] args)     
+    {
+        var state = State.OffHook;
+        while (true) //infinite loop
+        {
+            Console.WriteLine($"The phone is currently at state {state}");
+            Console.WriteLine($"select one of the following triggers:");
+          
+            //display options, we use this form because we want access to element by index.
+            for (var i =0; i < Transitions[state].Count; ++i)
+            {
+                var (trigger, _) = Transitions[state][i];
+                Console.WriteLine($"{i}. {trigger}:");
+            }
+
+            var input = int.Parse(Console.ReadLine()); //no error checking!
+            var (_,nextState) =Transitions[state][input]
+            state = nextState;
+        }
+    }
+}
+```
+
+#### Switch Based State Machine
+
+Combination Lock Example. this time using a switch case for transitions. rather than a dictionary. we can also use goto statements inside the switch (to move into other cases) instead of an infinite loop. this approach is easier in simle cases and we can have some actions in the transitions. this is still a problematic way to define a state machine.
+
+``` csharp
+public class CombinationLock
+{
+    public enum State
+    {
+        Locked,
+        Failed,
+        Unlocked
+    }
+
+    public static void Main(string[] args)
+    {
+        string code = "1234";
+        var state= State.Locked;
+        var entry = new StringBuilder();
+
+        while (true) //infinite loop
+        {
+            switch (state)
+            {
+                case State.Locked:
+                entry.append(Console.ReadKey().KeyChar);
+                if (entry.ToString() == code)
+                {
+                    state = State.Unlocked;
+                    break;
+                }
+                if (!code.StartsWith(entry.ToString()))
+                {
+                    state = State.Failed; 
+                }
+                break;
+                case State.Failed:
+                Console.CursorLeft = 0; // this will make the console overwrite the existing characters.
+                Console.WriteLine("FAILED");
+                entry.Clear();
+                state= State.Locked;
+                break;
+                case State.Unlocked:
+                Console.CursorLeft = 0; // this will make the console overwrite the existing characters.
+                Console.WriteLine("OPENED!");
+                return; //end the program
+                break;
+            }
+        }
+    }
+}
+```
+
+#### Switch Expression State Machine
+
+a [switch expression](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/operators/switch-expression) (from C# 8.0) isn't the same as a switch statement; it can switch on multiple arguments, use or ignore values in some cases, and even have further constrains with the *when* keyword, the default case is called a *guard case*.
+This form is a bit easier to read and have complex conditions for switching between states, but we don't have an easy way to add behavior for different states. we can add wrappers that do stuff, but that's an entire mess by itself.
+
+``` csharp
+public class TreasureChest
+{
+    enum ChestState
+    {
+        Open,
+        Closed,
+        Locked
+    }
+
+    enum Action
+    {
+        Open,
+        Close
+    }
+
+    //this is the switch expression. using pattern matching.
+    static ChestState Manipulate(ChestState chestState, Action action, bool haveKey) =>
+    (chestState,action, haveKey) switch 
+    {
+        (ChestState.Locked,Action.Open,true) => ChestState.Open,
+        (ChestState.Closed,Action.Open,_) => ChestState.Open, //we don't care about the third argument!
+        (ChestState.Open,Action.Closed,true) => ChestState.Locked,
+        (ChestState.Open,Action.Closed,false) => ChestState.Closed,
+        _ => chestState // default value
+    };
+    public static void Main(string[] args)
+    {
+        var chestState = ChestState.Locked;
+        chestState = Manipulate(chestState,Action.Open,true);
+        chestState = Manipulate(chestState,Action.Closed,false);
+        chestState = Manipulate(chestState,Action.Closed,false);
+    }
+}
+```
+
+#### State Machine With the Stateless Library
+
+see [bellow](#Stateless-Library). Microsoft also has library for this.
+
+
+
 </details>
 
 ### Strategy
@@ -1024,6 +1250,7 @@ TODO: add Summary
 </details>
 
 ## Related Concepts
+
 <details>
 <summary>
 TODO: add Summary
@@ -1038,6 +1265,7 @@ TODO: add Summary
 ### DI Container and Event Broker Integration
 
 ### Beyond the Elvis Operator
+
 ### CQRS and event Sourcing
 
 ### Functional Patterns in F#
@@ -1141,6 +1369,48 @@ public class Null<TInterface>: DynamicObject where TInterface: class
         result = Activator.CreateInstance(binder.ReturnType); //assuming the return type is default constructable.
         return true;
     }
+}
+```
+
+#### Stateless Library
+
+Hierarchical state machine library [Stateless](https://github.com/dotnet-state-machine/stateless). the state machine has the starting state, and we configure transitions with *.Configure()* followed by *.Permit()* or *.PermitIf()* to depend on some property.
+
+``` csharp
+using Stateless;
+public class Program
+{
+    public enum Health
+    {
+        NonReproductive,
+        Reproductive,
+        Pregnant
+    }
+    public enum Activity
+    {
+        GiveBirth,
+        ReachPuberty,
+        HaveAbortion,
+        HaveUnProtectedSex,
+        Hysterectomy
+    }
+    public static bool NobodyWatching{
+        get;
+        set;
+    }
+    public static void Main (string[] args)
+    {
+        var machine = new StateMachine<Health,Activity>(Health.NonReproductive); //define state machine with starting State.
+        machine.Configure(Health.NonReproductive) //from state
+            .Permit(Activity.ReachPuberty,Health.Reproductive); // transition.
+        machine.Configure(Health.Reproductive) //from state
+            .Permit(Activity.Hysterectomy,Health.NonReproductive) // transition.
+            .PermitIf(Activity.HaveUnProtectedSex,Health.Pregnant,()=>NobodyWatching); //permitIf based on condition
+        machine.Configure(Health.Pregnant) //from state
+            .Permit(Activity.GiveBirth,Health.Reproductive) // transition.
+            .Permit(Activity.HaveAbortion,Health.Reproductive); // transition.
+    }
+
 }
 ```
 

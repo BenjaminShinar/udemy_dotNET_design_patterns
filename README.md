@@ -979,8 +979,641 @@ dynamic null object - using DLR (dynamic language runtime). of course, this has 
 
 <details>
 <summary>
-TODO: add Summary
+An observer is an object that wishes to be informed about events happening in the system. The entity generating the events is an observable.
 </summary>
+
+We want to be informed(notified) when certain things happen, we  want to know when *events* happen. it's partially built in to the language with the *event* keyword, and there are also *IObservable\<T\> ,IObserver\<T\>* interfaces in the system library. there are also *INotifyPropertyChanging, INotifyPropertyChanged* and *BindingList\<T\>, ObservableCollection\<T\>*.
+
+#### The Event Keyword
+
+the event keyword specifies a special operation that other can subscribe onto and.
+the signature of the handling method has the invoking object (the observable) and the *EventArgs* object, or a derived object of it, which can contain additional information.
+
+we use the *+= and -=* operators to subscribe to events, there are some weird behavior for multiple subscriptions on the same event by the same method.
+
+``` csharp
+public class Person
+{
+    public event EventHandler<EventArgs> FallsIll; //event
+    public void CatchCall()
+    {
+        FallsIll?.Invoke(this,EventArgs.Empty); //might fail on null exception if no one subscribed
+
+    }
+    public static void Main(string[] args)
+    {
+        var person = new Person();
+        person.FallsIll += CallDoctor; //subscribe to the event
+    }
+    public static void CallDoctor(object sender, EventArgs eventArgs)
+    {
+
+    }
+}
+```
+
+#### Weak Event Pattern
+
+even though C# is managed, it can still have memory leaks when using events. so C# has a design pattern to avoid it.
+if we subscribe to something, our observer can't be collected while the observable exists.
+we can use *WeakReference*  to check if the item system exists.
+
+
+``` csharp
+public class Button
+{
+    public event EventHandler Click; //event
+    public void Fire()
+    {
+        Click?.Invoke(this,EventArgs.Empty); //
+
+    }
+
+    public static void CallDoctor(object sender, EventArgs eventArgs)
+    {
+
+    }
+}
+public class Window
+{
+    public Window(Button button)
+    {
+        button.Click += Action; // something
+    }
+    private void Action(object sender, EventArgs eventArgs)
+    {
+
+    }
+    ~Window()
+    {
+
+        //this is the destructor/ finalize method in c#, we rarely see it!
+    }
+}
+public class Demo
+{
+    public static void Main(string[] args)
+    {
+        var btn = new Button();
+        var win = new Window(win);
+        
+        //setting window to null;
+        window =null;
+        
+        // run garbage collector
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+    }
+}
+```
+
+to handle this issue we can either use IDisposable to unsubscribe from events. but there is also a *WeakEventManager\<obj,EvenArgs\>* which controls this itself. this means we no longer use the *+= or -=*  syntax.
+
+``` csharp
+public class Button2
+{
+    public event EventHandler Click; //event
+    public void Fire()
+    {
+        Click?.Invoke(this,EventArgs.Empty); //
+
+    }
+
+    public static void CallDoctor(object sender, EventArgs eventArgs)
+    {
+
+    }
+}
+public class Window2
+{
+    public Window2(Button2 button)
+    {
+        WeakEventManager<Button2,EventArgs>
+        .AddHandler(button,"Clicked",Action);
+    }
+    private void Action(object sender, EventArgs eventArgs)
+    {
+
+    }
+    ~Window2()
+    {
+
+        //this is the destructor/ finalize method in c#, we rarely see it!
+    }
+}
+public class Demo
+{
+    public static void Main(string[] args)
+    {
+        var btn = new Button2();
+        var win = new Window2(win);
+        
+        //setting window to null;
+        window =null;
+        
+        // run garbage collector
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+    }
+}
+```
+
+#### Observer via Special Interfaces
+
+RX:Reactive extensions.  
+ordinary events have event leaks, once we subscribe to something, the subscription is invisible. in RX there is pattern of IDisposable. The reactive extensions allow us some simplified stuff for easier use, but the explicit form is detailed here:
+
+``` csharp
+public class Event
+{
+
+}
+
+public class FallsIllEvent: Event
+{
+    public string Address {get;set;}
+}
+public class Person : IObservable<Event> //
+{
+    private readonly HashSet<Subscription> Subscriptions = new HashSet<Subscription>();
+    public void CatchCold()
+    {
+        foreach (var s in Subscriptions)
+        {
+            s.OnNext( new FallsIllEvent{Address = "street"}); //fire events;
+        }
+
+    }
+    public IDisposable Subscribe(IObserver<Event> observer)
+    {
+        var sub = new Subscription(this,observer);
+        Subscriptions.Add(sub);
+        return sub;
+    }
+
+// a private class
+    private class Subscription : IDisposable
+    {
+        private readonly Person Person;
+        public readonly IObserver<event> Observer;
+        public Subscription(Person person,IObserver<Event> observer)
+        {
+            Person=person;
+            Observer = observer;
+        }
+        public void Dispose()
+        {
+            Person.Subscriptions.Remove(this);
+        }
+    }
+}
+public class Program:IObserver<Event>
+{
+
+    public Program()
+    {
+        var person = new Person();
+        var sub = Person.Subscribe(this);
+        
+        person.CatchCold();
+    }
+    public static void Main(string[] args)
+    {
+        var program = new Program();
+        
+    }
+    public void OnCompleted()
+    {
+        // no more events to be generated
+
+    }
+    public void OnError(exception error)
+    {
+        
+    }
+    public void OnNext(Event value)
+    {
+        //this is the serious one.
+        if (value is FallsIllEvent args)        
+        {
+            //do something with args
+        }
+    }
+}
+
+//the RX syntax 
+public class RXProgram:IObserver<Event>
+{   
+
+    public RXProgram()
+    {
+        var p =new Person();        
+        //simplified form
+        p.OfType<FallsIllEvent>()
+            .Subscribe(args => {/*do something*/});
+        p.CatchCold();
+    }
+
+}
+```
+
+#### Observable Collections
+
+still in the world of reactive components.
+classes that implement *INotifyPropertyChanged* have *PropertyChanged* event and *OnPropertyChanged* Invoker. we can be notified on one property change. here are all sorts of ways to do this. there are BindingLists and observable collections and stuff like that. this is really important fo UI elements.
+
+
+``` csharp
+public class Market: INotifyPropertyChanged
+{
+    private float volatility;
+    public float Volatility
+    {
+        get{return volatility;}
+        set{
+            if(volatility.Equals(value)) return;
+            volatility= value;
+            OnPropertyChanged();
+        }
+    }
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    [NotifyPropertyChangedInvoker]
+    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    {
+     PropertyChanged?.Invoke(This, new PropertyChangedEventArgs(propertyName));   
+    }
+}
+public class MarketList 
+{
+    private list<float> prices = new list<float>();
+    
+    public void AddPrice(float price)
+    {
+        prices.Add(price);
+        PriceAdded?.Invoke(this,price);
+    }
+    public event EventHandler<float> PriceAdded;
+}
+
+public class BindingMarketList
+{
+    public BindingList<float> Prices = new BindingList<float>();
+}
+
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var m = new Market();
+        market.PropertyChanged += (sender, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == "Volatility")
+            {
+                //do something;
+            }
+        };
+        m.Volatility = 100.0f;
+
+        var ml = new MarketList();
+        ml.PriceAdded += (sender,price) =
+        {
+            // do something;
+        };
+        ml.AddPrice(50.0f);
+
+        var mlb = new BindingMarketList();
+        mlb.Prices.ListChanged += (sender,eventArgs) =>
+        {
+            if (eventArgs.ListChangedType == listChangedType.ItemAdded)
+            {
+                float price = ((BindingList<float>)sender)[eventArgs.newIndex];
+            }
+        };
+
+        mlb.Prices.Add(25.0f);
+    }
+}
+
+```
+
+#### Bidirectional Observers
+
+a bit more control than bindingList; trying to synchronize data between objects. we need the case guards to prevent infinite loops. in windows forms we have this built in as 'binding'. in our example we use Expression\<Func\<object\>\>.
+
+``` csharp
+public class Program
+{
+    public class Product : INotifyProductChanged
+    {
+        private string name;
+        public string Name 
+        {
+            get=>name;
+            set
+            {
+                if (value== name)return;
+                name= value;
+                OnPropertyChanged();
+            }
+        }
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvoker]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(This, new PropertyChangedEventArgs (propertyName));   
+        }
+    }
+
+    public class Window
+    {
+        private string productName;
+        public string ProductName 
+        {
+            get=>productName;
+            set
+            {
+                if (value== productName)return;
+                productName= value;
+                OnPropertyChanged();
+            }
+        }
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvoker]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(This, new PropertyChangedEventArgs (propertyName));   
+        }
+    }
+
+        public sealed class BidirectionalBinding:IDisposable
+    {
+        private bool disposed;
+        public BidirectionalBinding(INotifyPropertyChanged first, Expression<Func<object>> firstProperty,
+        INotifyPropertyChanged second, Expression<Func<object>> secondProperty)
+        {
+            //properties must be memberExpressions, and must be property Info
+            id (firstProperty.Body is MemberExpression firstExpression && secondProperty.Body is MemberExpression secondExpression)
+            {
+                if(firstExpression.Member is PropertyInfo firstProp && secondExpression.Member is PropertyInfo secondProp) 
+                {
+                    //subscribing
+                    first.PropertyChanged +=(sender,arg)=>
+                    {
+                        if(!disposed)
+                        {
+                            //reflection
+                            secondProp.SetValue(second,firstProp.GetValue(first));
+                        }
+                    }
+
+                    second.PropertyChanged +=(sender,arg)=>
+                    {
+                        if(!disposed)
+                        {
+                            firstProp.SetValue(first,secondProp.GetValue(second));
+                        }
+                    }
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            dispose = true;
+        }
+    }
+
+    public static void Main(string[] args)
+    {
+        var product = new Product{Name = "Book"};
+        var window = new Window{ProductName= "Book"};
+        //subscribe to both;
+        product.PropertyChanged += (sender,eventArgs) =>
+        {
+            if (eventArgs.PropertyName == "Name")
+            {
+                window.ProductName=product.Name;
+            }
+        };
+
+        window.PropertyChanged += (sender,eventArgs) =>
+        {
+            if (eventArgs.PropertyName == "ProductName")
+            {
+                product.Name=window.ProductName;
+            }
+        };
+
+        var product2 = new Product{Name="BetterBook"};
+        var window2 = new Window{ProductName="BetterBook"};
+        using var binding = new BidirectionalBinding(
+            product2, () => product2.Name,
+            window2,() => Window2.ProductName);
+    }
+}
+
+```
+
+
+
+#### Property Dependencies
+
+there is a problem of dependencies between properties. it's a real mess; we can call OnPropertyChange inside setters, but this doesn't scale well. we can try and make this work by employing a visitor.
+
+*I Might need to revisit this*
+
+``` csharp
+public class Program
+{
+    public static void Main(string[] args)
+    {
+    }
+    
+    public class Person : INotifyProductChanged
+    {
+        public bool CanVote => Age >= 16;
+        private int age;
+        public int Age 
+        {
+            get=>age;
+            set
+            {
+                if (value== age)return;
+                age= value;
+                OnPropertyChanged();
+                //very simple, but not scalable
+                OnPropertyChanged(nameof(CanVote));
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvoker]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(This, new PropertyChangedEventArgs (propertyName));   
+        }
+    }
+
+    //person can inherit from this?
+    public class PropertyNotificationSupport : INotifyProductChanged
+    {
+        private readonly Dictionary<string, HashSet<string>> affectedBy = new Dictionary<string, HashSet<string>>();
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvoker]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(This, new PropertyChangedEventArgs (propertyName));   
+            //this is recursive call to all dependencies;
+            foreach (var affected in affectedBy.Keys)
+            {
+                if (affectedBy[affected].Contains(propertyName))
+                {
+                    OnPropertyChanged(affectedBy); //
+                }
+            }
+        }
+    }
+
+    public class BetterPerson : PropertyNotificationSupport
+    {
+        private readonly Func<bool> canVote;
+        public bool CanVote => canVote();
+        private int age;
+        public int Age 
+        {
+            get=>age;
+            set
+            {
+                if (value== age)return;
+                age= value;
+                //this will call the recursive
+                OnPropertyChanged();
+            }
+        }
+        public BetterPerson()
+        {
+            //this is an expression that can be traversed
+            canVote = property(nameof(CanVote),()=> Age >=16);
+
+        }
+    }
+}
+```
+
+#### Declarative Event Subscription with Interfaces
+
+so far we only did manual subscription, but here is a convention of doing this automatically. this can be done by attributes or by reflection (as done below).  
+we will use autofac again for dependency injection. this is a huge mess of work and contains many shortcuts and hacks. we use singletons to avoid a problem of adding new senders (what about the hold handlers?), we also don't have any way to unsubscribe.
+
+``` csharp
+using autofac;
+public class Program
+{
+    //base interface
+    public interface IEvent
+    {
+    }
+
+    //base Sender interface
+    public interface ISend<TEvent> where TEvent: IEvent
+    {
+        event EventHandler<TEvent> Sender;
+    }
+    //base Handler interface
+    public interface IHandle<TEvent> where TEvent: IEvent
+    {
+        void Handle(object sender, TEvent args);
+    }
+    //concrete event class
+    public class ButtonPressedEvent : IEvent
+    {
+        public int NumberOfClicks;
+    }
+    //concrete Sender Class
+    public class Button: ISend<ButtonPressedEvent>
+    {
+        public event EventHandler<TEvent> Sender;
+        public void Fire(int clicks)
+        {
+            Sender?.Invoke(this, new ButtonPressedEvent
+            {
+                NumberOfClicks = clicks
+            });
+        }
+    }
+    //concrete handler class
+    public class Logging : IHandle<ButtonPressedEvent>
+    {
+        public void Handle(object sender, ButtonPressedEvent args)
+        {
+            //do something
+        }
+    }
+    public static void Main(string[] args)
+    {
+        var cb = new ContainerBuilder(); //autofac builder;
+        var assembly = Assembly.GetExecutingAssembly();
+        //register senders
+        cb.RegisterAssemblyTypes(assembly)
+            .AsClosedTypeOf(typeof(ISend<>))
+            .SingleInstance(); // this is for ease of use;
+        //register handlers
+        cb.RegisterAssemblyTypes(assembly)
+            .Where(t=> t.GetInterfaces() //interfaces of type t
+                .Any(i=> 
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IHandle<>)
+            ))
+            .OnActivated(act => //after creation
+            {
+                //if instance is IHandle<foo>, we want to subscribe to any ISender<foo>
+                var instanceType = act.Instance.GetType();
+                var interfaces = instanceType.GetInterfaces();
+                foreach (var i in interfaces)
+                {
+                    if (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IHandle<>) )
+                    {
+                        var arg0 = i.GetGenericArguments()[0]; // this is the foo type;
+                        var senderType = typeof(ISend<>).MakeGenericType(arg0);
+                        //now we want every instance of an object that is ISend<foo>
+                        //luckily, we can get it. somehow
+                        var allSenderTypes = typeof(IEnumerable<>)
+                            .MakeGenericType(senderType);
+                        var allServices = act.Context.Resolve(allSenderTypes);
+
+                        foreach (var service in (IEnumerable)allServices)
+                        {
+                            var eventInfo = service.GetType().GetEvent("Sender");
+                            var handleMethod = instanceType.GetMethod("Handle");
+                            var handler = Delegate.CreateDelegate(
+                                eventInfo.EventHandlerType,null, handleMethod);
+                            eventInfo.AddEventHandler(service, handler);
+                        }
+                    }
+                }
+            })
+            .SingleInstance()
+            .AsSelf();
+
+
+            var container = cb.Build();
+            var button = container.Resolve<Button>();
+            var logging = container.Resolve<Logging>();
+            button.Fire(1);
+            button.Fire(2);
+            
+     }
+}    
+```
+
+a different approach is to have an event broker, all the work is done by the broker.
 </details>
 
 ### State
@@ -1303,7 +1936,7 @@ public class TextProcessor
 
 we change the performance by substituting a single component. we can use dependency injection, use generic arguments and template, or simple pass the object in the constructor.
 
-we see the strategy pattern a lot in equality and comparisons algorithms. a class can have default comparison policy (*IComparable/<T/>,IComparable*) or provide a custom policy for the 
+we see the strategy pattern a lot in equality and comparisons algorithms. a class can have default comparison policy (*IComparable/<T/>,IComparable*) or provide a custom policy for the current sort request with a specific policy (lambda, linq, comparator object);
 
 </details>
 
@@ -1417,6 +2050,10 @@ public class Program
         builder.RegisterAssemblyTypes(typeof(Program).Assembly)
             .AsImplementedInterfaces(); //all classes from assembly
         
+        var assembly = Assembly.GetExecutingAssembly();
+        builder.RegisterAssemblyTypes(ass)
+            .AsClosedTypeOf(typeof(ISend<>))
+            .SingleInstance();
         using (var container = builder.Build())
         {
             var ba = container.Resolve<BankAccount>(); // get the class from the container.
@@ -1495,6 +2132,12 @@ public class Program
 
 }
 ```
+
+#### Reactive Extension RX
+
+[RX Reactive Extension](https://github.com/dotnet/reactive)
+provides some reactive elements to dotNet.
+> The Reactive Extensions (Rx) is a library for composing asynchronous and event-based programs using observable sequences and LINQ-style query operators.
 
 </details>
 

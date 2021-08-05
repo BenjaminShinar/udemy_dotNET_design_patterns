@@ -7,14 +7,13 @@ using System.Collections.Generic;
 
 /*
 	Strategy  Pattern
-	Quadetric equation
+	Quadric equation
 	ax2 + bx + c =0
 	x = -b +/- sqrt(b^2 - 4ac) / 2a;
 	the "b^2 - 4*a*c" partcalled Discriminant.
 	OrdinaryDiscriminantStrategy  returns as is.
-	RealDiscriminantStrategy retuns Nan if negative
+	RealDiscriminantStrategy returns NaN if negative
 	it was important to use complex.sqrt() here rather than math.sqrt();
-
 */
 
 namespace Coding.Exercise

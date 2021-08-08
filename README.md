@@ -2466,10 +2466,12 @@ more stuff, I guess.
 
 ### ASCII C# String
 
-a real world example of adaptor/ decorator. a class to represent and ascii string, rather than a utf-16 string. it should provide the same behavior as a string.
+a real world example of adaptor/ decorator. a class to represent and ascii string, rather than a utf-16 string. it should provide the same behavior as a string. we might want something like this for memory efficient string. 
+it's several patterns combined, an adapter, a proxy, a decorator, etc...
+
 
 ``` csharp
-public class str
+public class str: IEquatable<str>
 {
     protected readonly byte[] buffer;
     public str()
@@ -2485,11 +2487,19 @@ public class str
         this.buffer = buffer;
     }
 
+    //index access
+    public char this [int index]
+    {
+        get => (char) buffer[index];
+        set => buffer[index] = (byte) value;
+    }
+    
     //casting
     public static implicit operator str(string s)
     {
         return new str(s);
     }
+    
     //override ToString()
     public override string ToString()
     {
@@ -2519,18 +2529,315 @@ public class str
     {
         return !Equals(left,right);
     }
+
+    public override int GetHashCode()
+    {
+        return ToString().GetHashCode();
+    }
+    public static str operator+(str first,str second)
+    {
+        var bytes = new byte [first.buffer.Length + second.buffer.Length];
+        first.buffer.CopyTo(byes,0)
+        second.buffer.CopyTo(byes,first.buffer.Length)
+        return new str(bytes);
+    }
 }
 ```
 
 ### Continuation Passing Style
 
+Continuation passing style is used in languages like javascript. in C# it looks different. we separate functions based on different forks. we can also have a workflow result, either in our return value or in an out parameter.
+
+example with Quadratic Equation.
+``` csharp
+public class QuadraticEquationSolver
+{
+    public enum Flag
+    {
+        Success, Failure
+    }
+//ax^^2 + bx +c == 0
+    public Tuple<Complex,Complex>  Start(double a, double b, double c)
+    {
+        var disc = b* b -4 * a* c;
+        if (disc <0)
+        {
+            return SolveComplex(a,b,c,disc);
+        }
+        else
+        {
+            return SolveSimple(a,b,c,disc);
+        }
+        
+    }
+    private Tuple<Complex,Complex> SolveComplex (double a, double b, double c, double disc)
+    {
+        var rootDisc = Complex.Sqrt(new Complex(disc, 0));
+        return Tuple.Create(
+            (-b + rootDisc) / (2*a),
+            (-b - rootDisc) / (2*a)
+        );
+    }
+    private Tuple<Complex,Complex> SolveSimple (double a, double b, double c, double disc)
+    {
+        var rootDisc = Math.Sqrt(disc);
+        return Tuple.Create(
+            new Complex((-b + rootDisc) / (2*a),0),
+            new Complex((-+ + rootDisc) / (2*a),0),
+        );
+    }
+}
+
+```
+
 ### Local Inversion of Control
+
+inverting the control of an API.
+instead of calling something on the object, we call it on the subject. nice for readability, the operations flow the same way as we read them.
+
+``` csharp
+public static class ExtensionMethod
+{
+
+    public struct BoolMarker<T>
+    {
+        public bool Result;
+        public T Self;
+        public enum Operation
+        {
+            None,
+            And,
+            Or
+        };
+        internal Operation PendingOp;
+        internal BookMarker (bool result, T Self,Operation pendingOp)
+        {
+            Result = result;
+            Self = self;
+            PendingOp= pendingOp;
+        }
+        public BookMarker (bool result, T Self) : this(result,self,Operation.None)
+        {
+
+        }
+        public static implicit operator bool(BoolMarker<T> marker)
+        {
+            return marker.Result;
+        }
+        public BoolMarker<T> And => new BookMarker<T>(Result,self, Operation.And);
+    }
+
+    public static T AddTo<T>(this T self, ICollection<T> coll)
+    {
+        collection.Add(self);
+        return self;
+    }
+    public static T AddTo<T>(this T self, params ICollection<T>[] cols)
+    {
+        foreach (var col in colls)
+        {
+            cols.Add(self);
+        }
+        return self;
+    }
+    public static bool IsOneOfT(this T self, params T[] values)
+    {
+        return values.Contains(self);
+    }
+    public static bool HasNone<TSubject,T>(this TSubject self, Func<TSubject, IEnumerable<T>>props)
+    {
+        return !props(self).Any();
+    }
+    public static bool HasSome<TSubject,T>(this TSubject self, Func<TSubject, IEnumerable<T>>props)
+    {
+        return props(self).Any();
+    }
+
+    public static BoolMarker<TSubject> HasNoneOP<TSubject,T>(this TSubject self, Func<TSubject, IEnumerable<T>>props)
+    {
+        return new BoolMarker<TSubject> (!props(self).Any(),self);
+    }
+    public static BoolMarker<TSubject> HasSomeOP<TSubject,T>(this TSubject self, Func<TSubject, IEnumerable<T>>props)
+    {
+        return new BoolMarker<TSubject> (props(self).Any(),self);
+    }
+    public static BookMarker<T> HasNoneCon<T,U>(this BoolMarker<T> marker, Func<T,IEnumerable<T>>)
+    {
+        if (marker.PendingOp = BookMarker<T>.Operation.And && !marker.Result)
+        {
+            return marker;
+        }
+        return new BookMarker<T>(!props(marker.Self).Any(),marker.Self);
+    }
+}
+public class MyClass
+{   
+    public void AddingNumbers()
+    {
+        var list = new List<int>();
+        list.Add(24); //hey list, add to yourself the value 24!
+        27.AddTo(list); // add 24 to list;
+        var list2 = new List<int>();
+        27.AddTo(list,list2); // add 27 to list and list2;
+    }
+
+    public void ProcessCommand(string opCode)
+    {
+        if (opCode == "AND" ||opCode == "OR" || opCode == "XOR")
+        {
+            //version 1
+        }
+        if (new []{"AND","OR","XOR"}.Contains(opCode))
+        {
+            //version 2
+        }
+        if ("AND OR XOR".Split(' ').Contains(opCode))
+        {
+            //version 3
+        }
+        if (opCode.IsOneOf("AND","OR","XOR"))
+        {
+            //version 4, extension method
+            // like the %in% operator in R
+        }
+    }
+
+    public class Person
+    {
+        public List<string> Names = new List<string>();
+        public List<Person> Children = new List<Person>();
+
+        public static void Process(Person person)
+        {
+            if (person.Names.Count == 0)
+            {
+                //version 1;
+            }
+            if (!person.Names.Any())
+            {
+                //version 2
+            }
+            if (person.HasNone(p=> p.Names))
+            {
+                //version 3;
+            }
+
+            if (person.HasSome(p=>p.Children))
+            {
+                // has some children
+            }
+
+            if (person.HasSomeOp(p=>p.Children).And.HasNoneCon(p=>p.Names))
+            {
+                //chained together?
+            }
+        }
+    }
+}
+```
 
 ### DI Container and Event Broker Integration
 
+event broker as part of the dependency injection code:  
+*'\[Publishes("")\]* and *\[SubscribesTo("")\]* attributes, based on the *BrokerExtension* from the unity container extension. either with a Reflection strategy and WireUp strategy.
+
 ### Beyond the Elvis Operator
 
+the Elvis operator, the *maybe monad*, the *?.* operator.
+we can use the .? operator to get direct access, but if we want additional code, we can't;
+the maybe monad simply check for null, we might need more. we can use the same extension methods that we would have used in the past (before c# 6.0 to get this functionality); nothing happens if we pass thing that are null; we can also have something for value types with some 'bad value' like -1 to halt any results.
+
+``` csharp
+public class Address
+{
+    public string Street;
+}
+public class Person
+{
+    public Address Address;
+    public bool MedicalRecords;
+    public static void Foo(Person p)
+    {
+        string street ="Unknown";
+        //this is from the past
+        if (p != null && p.Address != null & p.Address.Street != null)
+        {
+            street= p.Address.Street;
+        }
+        //today
+        var street2 = p?.Address?.Street ?? "Unknown";
+    }
+    public static void Bar(Person p)
+    {
+        string street;
+        if (p!=null)
+        {
+            if (p.MedicalRecords && p.Address != null) 
+            {
+                if (CheckSomething(p))
+                {
+                    if (p.Address.Street= !null)
+                    {
+                        street= p.Address.Street;
+                    }
+                }
+            }
+        }
+    }
+    public static bool CheckSomething (Person p)
+    {
+        return true;
+    }
+    public static void DoSomething(Person p)
+    {
+        //
+    }
+    public static void Bar2(Person p)
+    {
+        string street = p.With(x=>x.address).With(a=>a.Street);
+        string street2 = p.With(x=x.address).If(x.MedicalRecords).With(x.x.Address.Street);
+         
+        p.With(x=x.address)
+            .If(x.MedicalRecords)
+            .If(CheckSomething)
+            .Do(DoSomething);
+            .With(x.x.Address.Street)
+
+    }
+}
+
+public static class Maybe
+{
+    public static TResult With<TInput,TResult>(this TInput o, Func<TInput, TResult> evaluator)
+    where TInput: class 
+    where TResult : class
+    {
+        if (o == null) return null;
+        else return evaluator(o);
+    }
+
+    public static TResult If<TInput>(this TInput o, Func<TInput, bool> predicator)
+    where TInput: class 
+    {
+        if (o == null) return null;
+        else return predicator(o) ? o : null; //we can only move forward if we pass the predicator.
+    }
+
+    public static TResult Do<TInput>(this TInput o, Action<TInput> action)
+    where TInput: class 
+    {
+        if (o == null) return null;
+        action(o);
+        return o;
+    }
+}
+```
+
 ### CQRS and event Sourcing
+
+CQRS - command query responsibility segregation.
+
+
 
 ### Functional Patterns in F#
 </details>

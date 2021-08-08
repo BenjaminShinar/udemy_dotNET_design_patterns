@@ -42,8 +42,82 @@ Consume classes as interfaces, so they are decoupled from other classes which us
 
 ## The Gamma Classification
 
+<details>
+<summary>
 Based on gang of four (GOF) classification: Creational, Structural and Behavioral patterns. named after Eric Gamma (one of the authors).
+</summary>
 
+* Builder
+    * Separate component for when object construction gets too complicated.
+    * Can create mutually cooperating sub-builders.
+    * Often has a fluent interface.
+* Factories
+    * Factory method is more expressive than a regular constructor.
+    * Can be an outside class or inner class. Inner class has the benefit of accessing private members.
+* Prototype
+    * Creation of an object from an existing object.
+    * Requires either explicit deep copy or copy through serialization.
+* Singleton
+    * when you need to ensure just a single instance exists.
+    * Made thread-safe and lazy with Lazy\<T\> in c#.
+    * Consider Extracting interfaces of using dependency injection to avoid too much coupling.
+* Adapter
+    * Converts the interface you get into the interface you need.
+    * allows opportunities for caching frequent used objects.
+* Bridge
+    * Decouple abstraction from implementation.
+* Component
+    * Allows client to treats individual object and compositions of object uniformly.
+    * In c# we used IEnumerable to present a individual object as a composition of them
+* Decorator
+    * Attach additional responsibilities to objects without inheritance.
+* Facade
+    * Provide a single unified interface over a set of classes/systems.
+* Flyweight
+    * Efficiently support very large numbers of similar objects.
+* Proxy
+    * Provide a surrogate object that forwards calls to the real object while performing additional functionalities.
+    * E.g., access control, communication, validation, etc.
+    * Dynamic Proxy creates a proxy dynamically, without the necessity of replicating the target object API.
+* Chain of Responsibility
+    * Allow components to process information/events in a chain.
+    * Each element in the chain refers to next element, or make a list an go through it.
+* Command
+    * Encapsulate a request into a separate object.
+    * Good for audit, replay, undo/redo.
+    * part of CQS/CQRS (command query separation, query is also, effectively, a command)
+* Interpreter
+    * Transform textual input into object-oriented structures.
+    * Used by interpreters, compilers, static analysis tools, etc.
+    * *Compiler theory* is a separate branch of computer science.
+* Iterator
+    * Provides an interface for accessing element of an aggregate object.
+    * IEnumerable\<T\> should be used 99% of cases.
+* Mediator
+    * Provides mediation services between two objects.
+    * E.G., message passing, chat room, events broker.
+* Memento
+    * Yields tokens representing system states.
+    * Token do now allow direct manipulation, but can be used in appropriate APIs.
+* Observer
+    * Built into C# with the *event* keyword.
+    * Additional support provided fro properties, collections and observable streams.
+* State
+    * We model systems by having one of a possible states and transitions between these states.
+    * Such a system is called a *state machine*.
+    * Special frameworks Exist to orchestrate state machines.
+* Strategy and Template Method
+    * Both patterns define an algorithm blueprint/placeholder.
+    * strategy uses composition, template method uses inheritance.
+* Visitor
+    * Adding functionality to existing classes through double dispatch.
+    * Dynamic visitor possible with DLR, but has a performance cost.
+* Null Object
+    * An object that solely exists t satisfy a requirement to an api, but doesn't perform any action.
+
+
+
+</details>
 
 ## Creational Patterns
 
@@ -317,6 +391,8 @@ example in video. stack of contexts? scoping, disposing.
 </details>
 
 </details>
+
+
 
 ## Structural Patterns
 
@@ -2385,10 +2461,66 @@ public class Program
 
 <details>
 <summary>
-TODO: add Summary
+more stuff, I guess.
 </summary>
 
 ### ASCII C# String
+
+a real world example of adaptor/ decorator. a class to represent and ascii string, rather than a utf-16 string. it should provide the same behavior as a string.
+
+``` csharp
+public class str
+{
+    protected readonly byte[] buffer;
+    public str()
+    {
+        buffer = new byte[]{};
+    }
+    public str(string s)
+    {
+        buffer = encoding.ASCII.GetBytes(s);
+    }
+    protected str (byte[] buffer)
+    {
+        this.buffer = buffer;
+    }
+
+    //casting
+    public static implicit operator str(string s)
+    {
+        return new str(s);
+    }
+    //override ToString()
+    public override string ToString()
+    {
+        return Encoding.ASCII.GetString(buffer);
+    }
+
+    public bool Equals(str other)
+    {
+        if (ReferenceEquals(null,other)) return false;
+        if (ReferenceEquals(this,other)) return true;
+        //this is the correct way to do this.
+        return ((IStructuralEquatable) buffer).Equals(other.buffer, StructuralComparisons.StructuralEqualityComparer);
+    }
+    public override bool Equals(object obj)
+    {
+        // do the usual checks for reference and type
+        if (ReferenceEquals(null,obj)) return false;
+        if (ReferenceEquals(this,obj)) return true;
+        if (obj.GetType() != this.GetType()) return false;
+        return Equals((str)obj);
+    }
+    public static bool operator ==(str left,str right)
+    {
+        return Equals(left,right);
+    }
+        public static bool operator !=(str left,str right)
+    {
+        return !Equals(left,right);
+    }
+}
+```
 
 ### Continuation Passing Style
 

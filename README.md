@@ -1958,8 +1958,425 @@ in the functional programming paradigm, we would used functions as parameters wi
 
 <details>
 <summary>
-TODO: add Summary
+A pattern where a component (visitor) is allowed to traverse the entire inheritance hierarchy. Implemented by propagating a single visit() method throughout the entire hierarchy.
 </summary>
+Define a new method on an entire class hierarchy without modifying every class in the hierarchy and while still having access to special non common members of each class.
+
+dispatch and double dispatch: determine which function to call, depending on the caller and the name of the request, double dispatch allows to the call to depend on two elements, the visitor and the type of element being visited.
+
+we propagate a method that connects to the visitor, and allow the visitor to do the work, we can either use double dispatch or dynamic casting.
+
+#### Base example without visitor
+
+non visitor example: printing mathematical expressions.
+``` csharp
+public class Program
+{
+    //could have been an interface.
+    public abstract class Expression
+    {
+        public abstract void Print(StringBuilder sb);
+    }
+
+    public class DoubleExpression : Expression
+    {
+        public double Value {get;set;}
+        public override vod Print(StringBuilder sb)
+        {
+            sb.Append(Value);
+        }
+    }
+
+    public class AdditionExpression : Expression
+    {
+        public Expression Left,Right;
+        public override vod Print(StringBuilder sb)
+        {
+            sb.Append("(");
+            sb.Append(Left);    
+            sb.Append("+");
+            sb.Append(Right);    
+            sb.Append(")");
+        }
+
+    }
+    public static void Main(string[] args) TextProcessor 
+    {
+        var sb = new StringBuilder();
+        var ex = new AdditionExpression
+        {
+            Left = new DoubleExpression{Value =5},
+            Right = new AdditionExpression
+            {
+                Left = new DoubleExpression{Value = 10},
+                Right = new DoubleExpression{Value = 7}
+            }
+        };
+
+        ex.Print(sb);
+        Console.WriteLine(sb.ToString());
+    }
+
+}
+
+```
+
+but what would we do if we couldn't add the 'print' method? this is what the visitor pattern is for. here is a version that uses switch statement and a version that uses a predefined table with actions. it's just a semantic difference, we still need to change the dictionary/switch for each new type.
+
+``` csharp
+public class Program
+{
+
+    //like typedef, defining a type of dictionary that maps a type to an action that that takes an expression and a string builder (doesn't return anything)
+    using DictType = Dictionary<Type,Action<Expression, StringBuilder>>;
+    //could have been an interface.
+    public abstract class Expression
+    {
+    }
+
+    public class DoubleExpression : Expression
+    {
+        public double Value {get;set;}
+    }
+
+    public class AdditionExpression : Expression
+    {
+        public Expression Left,Right;
+
+    }
+
+    public static class ExpressionPrinterIf
+    {
+        public static void Print(Expression e,StringBuilder sb)
+        {
+            //using reflection/ switch statement
+            if (e is DoubleExpression de)
+            {
+                sb.Append(de.Value); //note that Value must be public
+            }
+            else if (e is AdditionExpression ae)
+            {
+            sb.Append("(");
+            sb.Append(ae.Left,sb);    
+            sb.Append("+");
+            sb.Append(ae.Right,sb);    
+            sb.Append(")");
+            }
+            else if (/* other types*/)
+            {
+                //
+            }
+
+        }
+    }
+    //using a table
+    public static class ExpressionPrinterTable
+    {
+        // our typedef type
+        private static DictType actions = new DictType
+        {
+            //mapping type to action with lambda
+            [typeof(DoubleExpression)]= (e,sb) => 
+            {
+                var de = (DoubleExpression) e; //must cast!
+                sb.Append(e.Value);
+            }
+            [typeof(AdditionExpression)]= (e,sb) => 
+            {
+                var ae = (AdditionExpression) e; //must cast!
+                sb.Append("(");
+                Print(ae.Left,sb);    
+                sb.Append("+");
+                Print(ae.Right,sb);
+                sb.Append(")");
+            }
+        };
+        public static void Print (Expression e, StringBuilder sb)
+        {
+            //get type from expression, access dictionary, call action;
+            actions[e.GetType()](e,sb);
+        }
+    }
+    public static void Main(string[] args) TextProcessor 
+    {
+        var sb = new StringBuilder();
+        var ex = new AdditionExpression
+        {
+            Left = new DoubleExpression{Value =5},
+            Right = new AdditionExpression
+            {
+                Left = new DoubleExpression{Value = 10},
+                Right = new DoubleExpression{Value = 7}
+            }
+        };
+
+        ExpressionPrinterIf.Print(ex,sb);
+        Console.WriteLine(sb.ToString());
+    }
+
+}
+```
+
+#### Double Dispatch Real Visitor Example
+
+following is a real example of using a visitor, the classic double dispatch method. we all of the changes go inside a visitor class/interface, without touching the classes in the hierarchy themselves. this also allows us to define any number of visitors for any purpose. we still have a problem with the return type, whatever we first decide as our return type for the visitor,we're stuck with it and have to compensate for it with the visitor implementations.
+
+``` csharp
+public class Program
+{
+
+    public interface IExpressionVisitor
+    {
+        void Visit (DoubleExpression de);
+        void Visit (AdditionExpression ae);
+        // any new class comes here
+        // we should have a Visit(Expression e) for the base class, because we want compile time errors
+    }
+    public abstract class Expression
+    {
+        public abstract void Accept(IExpressionVisitor visitor);
+    }
+    
+    public class DoubleExpression : Expression
+    {
+        public double Value {get;set;}
+        public override void Accept(IExpressionVisitor visitor)
+        {
+            //double dispatch, this will call the correct override
+            visitor.Visit(this);
+        }
+    }
+
+    public class AdditionExpression : Expression
+    {
+        public Expression Left,Right;
+        public override void Accept(IExpressionVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
+
+    public class ExpressionVisitorPrinter :IExpressionVisitor
+    {
+        private StringBuilder Sb {get;} = new StringBuilder;
+        void Visit (DoubleExpression de)
+        {
+            Sb.Append(de.Value);
+        }
+        void Visit (AdditionExpression ae)
+        {
+            sb.Append("(");
+            ae.Left.Accept(this);    
+            sb.Append("+");
+            ae.Right.Accept(this);    
+            sb.Append(")");
+        }
+    }
+
+    //we made our visitor not return a value, sorry!
+    public class ExpressionVisitorCalculator :IExpressionVisitor
+    {
+        public double Result;
+        void Visit (DoubleExpression de)
+        {
+            Result = de.Value;
+        }
+        void Visit (AdditionExpression ae)
+        {
+            ae.Left.Accept(this); //mutate our result value;
+            var leftSide = Result;
+            ae.Right.Accept(this);//mutate our result value;
+            var rightSide = Result;
+            Result = leftSide + RightSide;
+        }
+    }
+    public static void Main(string[] args) TextProcessor 
+    {
+        var ex = new AdditionExpression
+        {
+            Left = new DoubleExpression{Value =5},
+            Right = new AdditionExpression
+            {
+                Left = new DoubleExpression{Value = 10},
+                Right = new DoubleExpression{Value = 7}
+            }
+        };
+        var printerVisitor = new ExpressionVisitorPrinter();
+        printerVisitor.Visit(ex); //or ex.Accept(printerVisitor), same thing
+        Console.WriteLine(printerVisitor.Sb.ToString());
+        // a different kind of visitor!
+        var calculatorVisitor = new ExpressionVisitorCalculator();
+        calculatorVisitor.Visit(ex);
+        Console.WriteLine(calculatorVisitor.Result);
+    }
+
+}
+```
+
+#### Dynamic Visitor via the DLR
+
+DLR = dynamic language runtime.  
+the best case scenario would be to somehow remove the visit/accept operations. we can use the *(dynamic)* cast for the calls in the visitor.  the advantage is that we remove the double hop from accept to visit and we no longer need to change the types. the disadvantage are:
+* we take a significant performance hit, 
+* we no longer have typechecking after dynamic casting. 
+* we won't be aware of the missing overloads until we encounter them in runtime (*Runtime Binder Exceptions*).
+* inheritance: (not clear what is the issue).
+
+``` csharp
+public class Program
+{
+
+
+    public abstract class Expression
+    {
+    }
+    
+    public class DoubleExpression : Expression
+    {
+        public double Value {get;set;}
+    }
+
+    public class AdditionExpression : Expression
+    {
+        public Expression Left,Right;
+    }
+
+    public class ExpressionVisitorPrinter
+    {
+        
+        public void Print (DoubleExpression de,StringBuilder sb)
+        {
+            sbAppend(de.Value);
+        }
+        public void Print (AdditionExpression ae,StringBuilder sb)
+        {
+            sb.Append("(");
+            Print((dynamic)ae.Left,sb);
+            sb.Append("+");
+            Print((dynamic)ae.Right,sb);        
+            sb.Append(")");
+        }
+
+    }
+
+    public static void Main(string[] args) TextProcessor 
+    {
+        Expression ex = new AdditionExpression
+        {
+            Left = new DoubleExpression{Value =5},
+            Right = new AdditionExpression
+            {
+                Left = new DoubleExpression{Value = 10},
+                Right = new DoubleExpression{Value = 7}
+            }
+        };
+        var sb = new StringBuilder();
+        var printerVisitor = new ExpressionVisitorPrinter();
+        printerVisitor.Print((dynamic)ex,sb); //dynamic cast to a supported overload.
+         Console.WriteLine(sb.ToString()); 
+        // a different kind of visitor!
+        var calculatorVisitor = new ExpressionVisitorCalculator();
+        Console.WriteLine(calculatorVisitor.Result);
+    }
+}
+```
+
+#### Acyclic Visitor
+
+the double dispatch pattern increases code complexity. we can use Acyclic Visitor to mitigate that complexity at the cost of some performance hit. we check the type before the dispatch.
+
+``` csharp
+public class Program
+{
+    public interface IVisitor<TVisitable>
+    {
+        void Visit (TVisitable obj);
+    }
+    //non generic, just a marker interface.
+    public interface IVisitor
+    {
+    }
+
+
+    public abstract class Expression
+    {
+        //accept any visitor;
+        public virtual void Accept(IVisitor)
+        {
+            //work just with visitors of this class
+            if (visitor is IVisitor<Expression> typed)
+            {
+                typed.Visit(This);
+            }
+        }
+    }
+    
+    public class DoubleExpression : Expression
+    {
+        public double Value {get;set;}
+        public override void Accept(IVisitor)
+        {
+            //not just visitor to Expression, but a visitor that can do work on this concrete class!
+            if (visitor is IVisitor<DoubleExpression> typed)
+            {
+                typed.Visit(This);
+            }
+        }
+    }
+
+    public class AdditionExpression : Expression
+    {
+        public Expression Left,Right;
+        public override void Accept(IVisitor)
+        {
+            if (visitor is IVisitor<AdditionExpression> typed)
+            {
+                typed.Visit(This);
+            }
+        }
+    }
+
+    public class ExpressionVisitorPrinter : IVisitor, IVisitor<Expression>,IVisitor<DoubleExpression>,IVisitor<AdditionExpression>,
+    {
+        StringBuilder Sb = new StringBuilder;
+        public void Visit(Expression obj)
+        {
+            //base class,
+        }
+        public void Visit (DoubleExpression de)
+        {
+            Sb.Append(de.Value);
+        }
+        public void Visit (AdditionExpression ae)
+        {
+            Sb.Append("(");
+            ae.Left.Accept(this);
+            Sb.Append("+");
+            ae.Right.Accept(this);   
+            Sb.Append(")");
+        }
+
+    }
+
+    public static void Main(string[] args) TextProcessor 
+    {
+        Expression ex = new AdditionExpression
+        {
+            Left = new DoubleExpression{Value =5},
+            Right = new AdditionExpression
+            {
+                Left = new DoubleExpression{Value = 10},
+                Right = new DoubleExpression{Value = 7}
+            }
+        };
+        var printerVisitor = new ExpressionVisitorPrinter();
+        printerVisitor.Visit(ex);
+        Console.WriteLine(printerVisitor.Sb.ToString()); 
+    }
+
+}
+```
+
 </details>
 
 </details>

@@ -2997,6 +2997,10 @@ in the real world we wouldn't pass references, we would have identifiers and we 
 
 ### Functional Patterns in F#
 
+F# is functional paradigm for CIL (common intermediate language).  
+most patterns are designed for OOP, in functional programming we have *Mondas*.
+
+
 </details>
 
 ## Extra Stuff

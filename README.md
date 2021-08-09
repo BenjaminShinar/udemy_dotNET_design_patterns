@@ -2634,7 +2634,7 @@ public static class ExtensionMethod
     }
     public static T AddTo<T>(this T self, params ICollection<T>[] cols)
     {
-        foreach (var col in colls)
+        foreach (var col in cols)
         {
             cols.Add(self);
         }
@@ -2837,13 +2837,170 @@ public static class Maybe
 
 CQRS - command query responsibility segregation.
 
+Tracking information about changes to objects. in CQRS, we don't access the properties directly, we use commands to change them and we track the commands. we can also use event sourcing, all the changes are events and we track those events. we will also want everything to be serializable.  
+Query - when we want t know something about the object without changing it.
+Command - when we want an object to change or do something.
 
+Event Broker roles (should probably be part of dependency injection).
+1. track all events that happened.
+1. be able to construct objects from those events.
+1. command changes to objects.
+1. query objects.
+
+``` csharp
+public class Program
+{
+
+    public class EventBroker
+    {
+        // all events that happened.
+        public IList<Event> AllEvents = new List<Event>();
+
+        public event EventHandler<Command> Commands;
+        public event EventHandler<Query> Queries;
+        public void Command (Command c)
+        {
+            Commands.Invoke(this,c); // fire command event;
+        }
+
+        public T Query<T> (Query q)
+        {
+            Queries.Invoke(this,q); // fire query event;
+            return (T) q.Result;
+        }
+
+        public void UndoLastEvent()
+        {
+            var e = AllEvents.LastOrDefault();
+            if (e is AgeChangedEvent changeAge)
+            {
+                Command(new ChangeAgeCommand(changeAge.Target, changeAge.OldValue){Register= false} ); // create the opposite command that doesn't go into the event log; maybe it does go into a different log, who knows.
+                //remove command?
+                allEvents.Remove(e); // remove the command;
+            }
+            //other commands, I guess
+        }
+    }
+
+
+    public class Event
+    {
+    }
+    public class AgeChangedEvent: Event
+    {
+        public Person Target;
+        public int OldValue, NewValue; //obviously, this should be templated;
+        public AgeChangedEvent (Person p, int old, int new)
+        {
+            this.Target=p;
+            this.OldValue=old;
+            this.NewValue=new;
+        }
+    }
+    public class Command : EventArgs
+    {
+        public bool Register = true;
+    }
+
+    public class ChangeAgeCommand : Command
+    {
+        public Person Target; //who is changed
+        public int NewAge; //
+        public ChangeAgeCommand(Person p, int age)
+        {
+            this.Target = p;
+            this.NewAge=age;
+        }
+    }
+    public class Query :EventArgs
+    {
+        public object Result;
+    }
+    public class GetAgeQuery : Query
+    {
+        public Person Target; //who is changed
+        public ChangeAgeCommand(Person p, int age)
+        {
+            this.Target = p;
+        }
+    }
+    public class Person
+    {
+        public int Age {get;set;}
+    }
+    
+    public class TrackedPerson
+    {
+        public EventBroker broker;
+        private int age;
+        public TrackedPerson(EventBroker eb)
+        {
+            this.broker = eb;
+            broker.Commands += BrokerOnCommands; // listen to event
+            broker.Queries += BrokerOnQueries; // listen to event
+
+        }
+
+        private void BrokerOnCommands(object sender, Command command)
+        {
+            //handle commands
+            if (command is ChangeAgeCommand changeAge) //check type of command
+            {
+                if (changeAge.Target = this) //check target
+                {
+                    if (changeAge.Register) // not done if it's an undo command.
+                    {
+                        broker.AllEvents.Add(new AgeChangedEvent(this,age,changeAge.NewAge)); // add the event to the tracked events log;
+                    }
+                    this.age = changeAge.NewAge; //changed
+                }
+            }
+        }
+
+        private void BrokerOnQueries(object sender, Query query)
+        {
+            //handle Queries
+            if (query is GetAgeQuery getAge) //check type of query
+            {
+                if (getAge.Target = this) //check target
+                {
+                   query.Result = age; //set result to something
+                }
+            }
+        }
+    }
+
+    static void Main (string[] args)
+    {
+        var p = new Person();
+        p.Age = 123; // here we make a change, how do we track it?
+        var broker = new EventBroker(); //just one
+        var p2 = new TrackedPerson(broker);
+        var changeAgeCMD = new ChangeAgeCommand(p2,123); // new command to change age of p2;
+        broker.Command(changeAgeCMD); // the event broker distributes the command;       
+        var p2Age = broker.Query<int>(new GetAgeQuery(p)); //we access the age with the commands;
+        foreach (var e in broker.AllEvents)
+        {
+            Console.WriteLine($"event: {e}"); // assume event can write itself;
+        }
+    }
+}
+```
+
+one issue is that there is no way to model dependencies on properties:
+
+``` csharp
+public bool CanVote {get{age >= 16;}}
+```
+we didn't show how to unsubscribe, we can use reactive events.
+in the real world we wouldn't pass references, we would have identifiers and we could never construct objects on their own. this also allows us better serialization.
 
 ### Functional Patterns in F#
+
 </details>
 
-
 ## Extra Stuff
+
 <details>
 <summary>
 Stuff that i didn't know about until now.
